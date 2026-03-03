@@ -8,6 +8,7 @@ services:
       - PUID=${PUID:-1000}
     networks:
       - net_internal
+      - net_external
     ports:
       - "${PORT:-8888}:8888"
     restart: unless-stopped
@@ -18,3 +19,6 @@ networks:
   net_internal:
     external: true
     name: ${INTERNAL_NETWORK:-net_internal}
+  net_external:
+    external: true
+    name: ${EXTERNAL_NETWORK:-net_external}
