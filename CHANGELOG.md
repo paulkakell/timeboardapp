@@ -1,6 +1,16 @@
 # Changelog
 
 
+## 00.12.00
+
+- Additive: Add `GET /api/tasks/summary` to return authenticated-user totals for Archived, Past Due, All Upcoming Due, Due in 0-8h, Due in 8-24h, and Due in >24h.
+- Additive: Add regression tests covering summary bucket boundaries, archived counts, and API auth scoping for per-user totals.
+
+Compatibility: Backward compatible (no DB schema changes).
+
+Refs: Issue N/A, Commit N/A
+
+
 ## 00.11.00
 
 - Additive/Branding: Rebrand product name to TimeboardApp across the codebase (UI, docs, config defaults, notification headers/user-agent).
