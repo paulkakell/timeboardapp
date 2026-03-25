@@ -121,7 +121,9 @@ curl -H "Authorization: Bearer $TOKEN" \
         <p class="small">For exact request/response schemas, use <code>/docs</code> on your running instance.</p>
       </div>
     </section>
-  </main>
+  <h2 id="tasks-summary-endpoint">Tasks summary endpoint</h2>
+<p><code>GET /api/tasks/summary</code> returns summary totals for the authenticated user inferred from the bearer token. The payload includes <code>archived</code>, <code>past_due</code>, <code>all_upcoming_due</code>, <code>due_in_0_8h</code>, <code>due_in_8_24h</code>, and <code>due_in_over_24h</code>.</p>
+</main>
 
   <footer class="footer">
     <div class="container footer-inner">
