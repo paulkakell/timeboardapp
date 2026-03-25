@@ -268,3 +268,9 @@ Security scan (Bandit):
 ```bash
 bandit -r app
 ```
+
+
+### Tasks API summary endpoint
+
+Authenticated API clients can call `GET /api/tasks/summary` to retrieve per-user totals derived from the bearer token. The response includes these counters: `archived`, `past_due`, `all_upcoming_due`, `due_in_0_8h`, `due_in_8_24h`, and `due_in_over_24h`.
+
