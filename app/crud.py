@@ -1093,6 +1093,59 @@ def list_tasks(
     return q.all()
 
 
+
+def get_task_summary_counts(
+    db: Session,
+    *,
+    current_user: User,
+    now_utc: datetime | None = None,
+) -> dict[str, int]:
+    """Return dashboard-style task summary counts for the authenticated user.
+
+    Archived includes completed + deleted tasks. All other buckets count active
+    tasks only. Upcoming buckets are mutually exclusive and sum to
+    ``all_upcoming_due``.
+    """
+
+    now = (now_utc or datetime.utcnow()).replace(tzinfo=None)
+    in_8h = now + timedelta(hours=8)
+    in_24h = now + timedelta(hours=24)
+
+    active_base = _tasks_base_query(
+        db,
+        current_user=current_user,
+        include_archived=True,
+        search=None,
+        tag=None,
+        user_id=None,
+        task_type=None,
+        status=TaskStatus.active.value,
+    )
+
+    past_due = active_base.filter(Task.due_date_utc < now).count()
+    due_in_0_8h = active_base.filter(Task.due_date_utc >= now, Task.due_date_utc < in_8h).count()
+    due_in_8_24h = active_base.filter(Task.due_date_utc >= in_8h, Task.due_date_utc < in_24h).count()
+    due_in_over_24h = active_base.filter(Task.due_date_utc >= in_24h).count()
+    archived = _tasks_base_query(
+        db,
+        current_user=current_user,
+        include_archived=True,
+        search=None,
+        tag=None,
+        user_id=None,
+        task_type=None,
+        status="archived",
+    ).count()
+
+    return {
+        "archived": int(archived or 0),
+        "past_due": int(past_due or 0),
+        "all_upcoming_due": int((due_in_0_8h or 0) + (due_in_8_24h or 0) + (due_in_over_24h or 0)),
+        "due_in_0_8h": int(due_in_0_8h or 0),
+        "due_in_8_24h": int(due_in_8_24h or 0),
+        "due_in_over_24h": int(due_in_over_24h or 0),
+    }
+
 def update_task(
     db: Session,
     *,
