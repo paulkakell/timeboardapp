@@ -131,6 +131,15 @@ class TaskCompleteResponse(BaseModel):
     spawned_task: Optional[TaskOut] = None
 
 
+class TaskSummaryOut(BaseModel):
+    archived: int
+    past_due: int
+    all_upcoming_due: int
+    due_in_0_8h: int
+    due_in_8_24h: int
+    due_in_over_24h: int
+
+
 # ---- Notifications (service-based) -------------------------------------------------
 
 
