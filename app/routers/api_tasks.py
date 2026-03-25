@@ -10,13 +10,14 @@ from ..crud import (
     complete_task,
     create_task,
     get_task,
+    get_task_summary_counts,
     list_tasks,
     restore_task,
     soft_delete_task,
     update_task,
 )
 from ..db import get_db
-from ..schemas import TaskCompleteResponse, TaskCreate, TaskOut, TaskUpdate
+from ..schemas import TaskCompleteResponse, TaskCreate, TaskOut, TaskSummaryOut, TaskUpdate
 
 
 router = APIRouter()
@@ -46,6 +47,14 @@ def api_list_tasks(
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/summary", response_model=TaskSummaryOut)
+def api_task_summary(
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_api),
+):
+    return get_task_summary_counts(db, current_user=current_user)
 
 
 @router.post("/", response_model=TaskOut)
