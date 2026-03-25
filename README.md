@@ -2,7 +2,7 @@
 
 A lightweight, dockerized task board that supports recurrence intervals shorter than a day.
 
-Current version: **00.11.00**
+Current version: **00.12.00**
 
 Website:
 - https://timeboardapp.com
