@@ -78,7 +78,7 @@
           <div class="small text-muted mt-1">Due {{ t.due_date_utc|dt_local }}</div>
 
           {% if t.url %}
-            <div class="small mt-1"><a href="{{ t.url }}" target="_blank" rel="noopener">{{ t.url }}</a></div>
+            <div class="small mt-1"><a href="{{ t.url|safe_task_url }}" target="_blank" rel="noopener">{{ t.url }}</a></div>
           {% endif %}
 
           {% if t.tags %}
@@ -91,6 +91,7 @@
 
           <div class="d-flex gap-2 mt-3">
             <form method="post" action="/tasks/{{ t.id }}/restore" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
               <button class="btn btn-primary btn-sm" type="submit">Restore</button>
             </form>
           </div>

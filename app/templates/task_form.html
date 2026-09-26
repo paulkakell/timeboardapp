@@ -23,11 +23,13 @@
     {% if can_follow is defined and can_follow %}
       {% if is_following %}
         <form method="post" action="/tasks/{{ task.id }}/unfollow">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
           <input type="hidden" name="next" value="{{ request.url.path }}?next={{ next_url|urlencode }}">
           <button class="btn btn-outline-secondary btn-sm" type="submit">Unfollow</button>
         </form>
       {% else %}
         <form method="post" action="/tasks/{{ task.id }}/follow">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
           <input type="hidden" name="next" value="{{ request.url.path }}?next={{ next_url|urlencode }}">
           <button class="btn btn-outline-secondary btn-sm" type="submit">Follow</button>
         </form>
@@ -36,6 +38,7 @@
 
     {% if _can_edit and task %}
       <form method="post" action="/tasks/{{ task.id }}/clone">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
         <input type="hidden" name="next" value="{{ next_url }}">
         <button class="btn btn-outline-secondary btn-sm" type="submit">Clone</button>
       </form>
@@ -54,6 +57,7 @@
 {% endif %}
 
 <form method="post" action="{% if mode == 'new' %}/tasks/new{% else %}/tasks/{{ task.id }}/edit{% endif %}">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
   <input type="hidden" name="next" value="{{ next_url }}">
   {% if mode == 'new' and parent_task_id %}
     <input type="hidden" name="parent_task_id" value="{{ parent_task_id }}">

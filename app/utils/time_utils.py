@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ..clock import utc_now
+
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
@@ -16,7 +18,7 @@ def get_app_tz() -> ZoneInfo:
 
 def now_utc() -> datetime:
     # Stored timestamps are naive UTC.
-    return datetime.utcnow().replace(tzinfo=None)
+    return utc_now().replace(tzinfo=None)
 
 
 def as_aware_utc(dt_utc_naive: datetime) -> datetime:

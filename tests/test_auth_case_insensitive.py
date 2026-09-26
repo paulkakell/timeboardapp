@@ -76,7 +76,7 @@ def test_username_lookup_and_authentication_are_case_insensitive(tmp_path, monke
         assert authenticate_user(db, "MIXEDCASEUSER", "CasePassword123!").id == user.id
         assert authenticate_user(db, "case@example.invalid", "CasePassword123!").id == user.id
 
-        token = create_access_token(subject="MIXEDCASEUSER", is_admin=False)
+        token = create_access_token(subject="MIXEDCASEUSER", is_admin=False, user=user)
         assert get_current_user_api(db=db, token=token).id == user.id
     finally:
         db.close()

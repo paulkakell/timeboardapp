@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .clock import utc_now, utc_from_timestamp
+
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -25,9 +27,10 @@ from .models import (
     UserNotificationTag,
 )
 from .version import APP_VERSION
+from .paths import backup_directory
+from .private_files import write_private_text
 
 
-DEFAULT_BACKUPS_DIR = Path("/data/backups")
 
 # app_meta keys (stored in the database)
 AUTO_BACKUP_FREQUENCY_KEY = "auto_backup.frequency"
@@ -51,7 +54,7 @@ def _dt(dt: datetime | None) -> str | None:
 
 
 def _timestamp_utc(now: datetime | None = None) -> str:
-    n = now or datetime.utcnow().replace(tzinfo=None)
+    n = now or utc_now().replace(tzinfo=None)
     return n.strftime("%Y%m%dT%H%M%SZ")
 
 
@@ -245,7 +248,7 @@ def export_db_json(db: Session) -> Dict[str, Any]:
         user_notification_services = []
 
     return {
-        "exported_at_utc": datetime.utcnow().replace(tzinfo=None).isoformat(),
+        "exported_at_utc": utc_now().replace(tzinfo=None).isoformat(),
         "app_version": APP_VERSION,
         "db_meta": meta,
         "users": users,
@@ -262,7 +265,7 @@ def write_backup_json(
     data: Dict[str, Any],
     *,
     prefix: str,
-    backups_dir: Path = DEFAULT_BACKUPS_DIR,
+    backups_dir: Path | None = None,
 ) -> Path:
     """Write a JSON backup file to disk.
 
@@ -270,6 +273,7 @@ def write_backup_json(
 
     Returns the final backup path.
     """
+    backups_dir = backups_dir or backup_directory()
     backups_dir.mkdir(parents=True, exist_ok=True)
 
     safe_prefix = "".join([c for c in (prefix or "").upper() if c.isalnum() or c in {"-", "_"}]) or "BACKUP"
@@ -281,16 +285,14 @@ def write_backup_json(
     filename = build_auto_backup_filename(label=safe_prefix, app_version=app_version, db_version=db_version)
 
     final_path = backups_dir / filename
-    tmp_path = backups_dir / f".{filename}.tmp"
 
     # Add minimal metadata to backups (does not affect import).
     payload = dict(data)
     payload.setdefault("backup_type", safe_prefix)
-    payload.setdefault("backup_written_at_utc", datetime.utcnow().replace(tzinfo=None).isoformat())
+    payload.setdefault("backup_written_at_utc", utc_now().replace(tzinfo=None).isoformat())
     payload.setdefault("backup_origin", "auto")
 
-    tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
-    tmp_path.replace(final_path)
+    write_private_text(final_path, json.dumps(payload, indent=2, sort_keys=True))
     return final_path
 
 
@@ -298,7 +300,7 @@ def backup_database_json(
     db: Session,
     *,
     prefix: str,
-    backups_dir: Path = DEFAULT_BACKUPS_DIR,
+    backups_dir: Path | None = None,
 ) -> Path:
     """Create a JSON backup of the current database."""
     data = export_db_json(db)
@@ -461,7 +463,7 @@ def set_auto_backup_settings(
 def purge_backup_files(
     *,
     retention_days: int,
-    backups_dir: Path = DEFAULT_BACKUPS_DIR,
+    backups_dir: Path | None = None,
     now: datetime | None = None,
 ) -> int:
     """Delete backup files older than `retention_days`.
@@ -479,8 +481,9 @@ def purge_backup_files(
     if days <= 0:
         return 0
 
-    cutoff = (now or datetime.utcnow().replace(tzinfo=None)) - timedelta(days=days)
+    cutoff = (now or utc_now().replace(tzinfo=None)) - timedelta(days=days)
 
+    backups_dir = backups_dir or backup_directory()
     if not backups_dir.exists() or not backups_dir.is_dir():
         return 0
 
@@ -495,7 +498,7 @@ def purge_backup_files(
             continue
 
         try:
-            mtime = datetime.utcfromtimestamp(p.stat().st_mtime).replace(tzinfo=None)
+            mtime = utc_from_timestamp(p.stat().st_mtime).replace(tzinfo=None)
             if mtime < cutoff:
                 p.unlink(missing_ok=True)
                 deleted += 1
@@ -818,8 +821,8 @@ def import_db_json(db: Session, payload: Dict[str, Any], *, replace: bool = True
             if not is_admin and not email_norm:
                 raise ValueError(f"User '{u.get('username')}' is missing email (required for non-admin users)")
 
-            created_at = _parse_datetime(u.get("created_at"), field="users.created_at") or datetime.utcnow().replace(tzinfo=None)
-            updated_at = _parse_datetime(u.get("updated_at"), field="users.updated_at") or datetime.utcnow().replace(tzinfo=None)
+            created_at = _parse_datetime(u.get("created_at"), field="users.created_at") or utc_now().replace(tzinfo=None)
+            updated_at = _parse_datetime(u.get("updated_at"), field="users.updated_at") or utc_now().replace(tzinfo=None)
 
             theme = str(u.get("theme") or Theme.system.value)
             if theme not in {Theme.light.value, Theme.dark.value, Theme.system.value}:
@@ -868,9 +871,9 @@ def import_db_json(db: Session, payload: Dict[str, Any], *, replace: bool = True
                             "config_json": r.get("config_json"),
                             "tag_id": int(r.get("tag_id")),
                             "created_at": r.get("created_at")
-                            or datetime.utcnow().replace(tzinfo=None).isoformat(),
+                            or utc_now().replace(tzinfo=None).isoformat(),
                             "updated_at": r.get("updated_at")
-                            or datetime.utcnow().replace(tzinfo=None).isoformat(),
+                            or utc_now().replace(tzinfo=None).isoformat(),
                         },
                     )
                 except Exception:
@@ -890,7 +893,7 @@ def import_db_json(db: Session, payload: Dict[str, Any], *, replace: bool = True
                             "user_id": int(r.get("user_id")),
                             "tag_id": int(r.get("tag_id")),
                             "created_at": r.get("created_at")
-                            or datetime.utcnow().replace(tzinfo=None).isoformat(),
+                            or utc_now().replace(tzinfo=None).isoformat(),
                         },
                     )
                 except Exception:
@@ -912,9 +915,9 @@ def import_db_json(db: Session, payload: Dict[str, Any], *, replace: bool = True
                             "enabled": 1 if bool(r.get("enabled")) else 0,
                             "config_json": r.get("config_json"),
                             "created_at": r.get("created_at")
-                            or datetime.utcnow().replace(tzinfo=None).isoformat(),
+                            or utc_now().replace(tzinfo=None).isoformat(),
                             "updated_at": r.get("updated_at")
-                            or datetime.utcnow().replace(tzinfo=None).isoformat(),
+                            or utc_now().replace(tzinfo=None).isoformat(),
                         },
                     )
                 except Exception:
@@ -929,8 +932,8 @@ def import_db_json(db: Session, payload: Dict[str, Any], *, replace: bool = True
             if due_dt is None:
                 raise ValueError(f"Task '{t.get('name')}' is missing due_date_utc")
 
-            created_at = _parse_datetime(t.get("created_at"), field="tasks.created_at") or datetime.utcnow().replace(tzinfo=None)
-            updated_at = _parse_datetime(t.get("updated_at"), field="tasks.updated_at") or datetime.utcnow().replace(tzinfo=None)
+            created_at = _parse_datetime(t.get("created_at"), field="tasks.created_at") or utc_now().replace(tzinfo=None)
+            updated_at = _parse_datetime(t.get("updated_at"), field="tasks.updated_at") or utc_now().replace(tzinfo=None)
 
             db.add(
                 Task(

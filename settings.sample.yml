@@ -8,6 +8,10 @@ app:
 security:
   session_secret: "CHANGE_ME_SESSION_SECRET"  # Used to sign UI session cookies
   jwt_secret: "CHANGE_ME_JWT_SECRET"          # Used to sign API JWT tokens
+  # null selects Secure cookies automatically when app.base_url uses HTTPS.
+  secure_cookies: null
+  # Exact trusted LAN hosts only; loopback and metadata addresses stay blocked.
+  outbound_allowed_hosts: []
 
 database:
   path: "/data/timeboardapp.db"     # SQLite database file

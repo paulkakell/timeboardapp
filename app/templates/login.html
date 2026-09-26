@@ -22,6 +22,7 @@
     {% endif %}
 
     <form method="post" action="/login" class="card card-body">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
       <div class="mb-3">
         <label class="form-label">Username or Email</label>
         <input class="form-control" type="text" name="username" required autofocus>
@@ -36,7 +37,7 @@
       </div>
     </form>
 
-    <p class="text-muted mt-3 small">If this is the first run, the initial admin password is printed in the container logs.</p>
+    <p class="text-muted mt-3 small">If this is the first run, an operator must read initial-admin-password.txt in the configured data directory. The password is not written to application logs.</p>
   </div>
 </div>
 {% endblock %}

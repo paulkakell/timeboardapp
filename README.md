@@ -1,297 +1,64 @@
 # TimeboardApp
 
-A lightweight, dockerized task board that supports recurrence intervals shorter than a day.
+A self-hosted task board with recurrence, nested subtasks, calendar and mobile views, tags, manager assignment, task following, notifications, and administrator tools. FastAPI, Jinja, SQLAlchemy/SQLite, and APScheduler power the application.
 
-Current version: **00.12.03**
+**Release status:** this maintenance source update is based on application version `00.12.03` and is not a published release. It changes authentication and deployment behavior. Read the migration guidance before deploying it.
 
-Website:
-- https://timeboardapp.com
+## Start locally
 
-Repository:
-- https://github.com/paulkakell/timeboardapp
-
-## Key features
-
-- Recurrence options:
-  - **Post-Completion Interval**: schedule next due time as `completion_time + interval` (e.g., every `8h` after completion).
-  - **Multi-Slot Daily Scheduling**: schedule next due time at the next time slot in a daily list (e.g., `08:00, 15:00, 23:00`).
-  - **Fixed Clock Scheduling**: schedule next due time on a fixed interval anchored to the previous due date (e.g., `1d` anchored to `10:00` every day), regardless of completion time.
-
-- Mobile-friendly and desktop-friendly web UI (auto-detects mobile devices; footer link to switch to desktop).
-- Light/Dark/System themes.
-- Task Type filtering and sorting.
-- Calendar view with color-coded due-state filtering (per-user, persisted).
-- Optional per-user frozen past-due tag shortcut bar from **Profile**.
-- Archived view for completed/deleted tasks (restore archived tasks back to active).
-- Admin user management:
-  - create/delete users
-  - promote/demote users between Admin and User
-  - dashboard "Views" menu (My Tasks, All Tasks, per-user views)
-  - export/import database JSON
-  - full feature and security validation from **Admin → Validation**
-- Email features (when SMTP is configured in the admin UI):
-  - hourly overdue reminders
-  - password reset via email ("Reset password" link)
-  - login using username or email address
-- Per-user notification services (each service entry generates a routing tag; tasks with that tag send notifications on create/update/past due/complete/archive):
-  - Browser notifications (SSE)
-  - Email
-  - Windows Push Notification Services (WNS)
-  - Gotify
-  - ntfy
-  - Discord (webhook)
-  - Generic webhook
-  - Generic API
-  - Non-browser deliveries are dispatched asynchronously; delivery status/errors are recorded on `notification_events` and returned by `/api/notifications/events`.
-- Application logging to `/data/logs` (daily files) with configurable log level + retention via the admin UI.
-- SQLite database.
-- Full OpenAPI-documented API (Swagger UI at `/docs`).
-- Configurable via `settings.yml` on a Docker volume.
-- Archived task purge job (default 15 days, per-user override).
-- Application + database versioning (stored in `app_meta`). On startup, older/unversioned databases are automatically upgraded to the current schema.
-
-## Quick start (Docker Compose)
-
-```bash
-docker compose up --build
+```sh
+cp .env.example .env
+# Linux example: match PUID and PGID in .env.
+sudo install -d -m 700 -o 1000 -g 1000 data
+docker compose up -d --build
+docker compose exec timeboardapp cat /data/initial-admin-password.txt
 ```
 
-Optionally, copy `.env.example` to `.env` and adjust defaults (host port, data directory, network name).
+Visit `http://localhost:8888`, sign in as `admin`, and change the generated password. After confirming the new password works, remove the initial credential file. Application logs no longer disclose the password. Recovery is an explicit operator command: `docker compose exec timeboardapp python -m app.cli reset-admin`. This command intentionally prints its generated password to the operator's terminal.
 
-Open the UI at:
+Compose now has a stable `timeboardapp` service, defaults to loopback exposure, and needs no pre-created external networks. The container runs as the configured PUID/PGID, drops capabilities, and uses a read-only root filesystem. Pre-create the persistent directory with matching ownership and keep it private.
 
-- http://localhost:8888
+## Configuration and upgrades
 
-If demo mode is enabled (`demo.enabled: true`), the login page shows demo credentials and a reset warning.
+`TIMEBOARDAPP_SETTINGS` defaults to `/data/settings.yml`. `TIMEBOARDAPP_BASE_URL` sets the public application origin, for example `https://tasks.example.com`; it is required for password-reset links and the private GPT schema. Set application display time in `app.timezone`; container `TZ` alone does not change it. Email, logging, WNS, and backup settings are database-backed administrator settings, seeded from legacy YAML where applicable.
 
-Note: if you set `PORT`, Docker Compose maps the UI to `http://localhost:${PORT}` instead of `:8888`.
+The source uses Argon2id for new passwords, with transparent migration from existing PBKDF2-SHA256 hashes on successful login. Existing JWTs/browser sessions are invalidated by the upgrade; sign in again. Password changes/resets invalidate issued credentials. An old-image rollback also needs the matching pre-upgrade database/settings snapshot because the old password library cannot read migrated Argon2id hashes. Back up and test restoration before updating production.
 
+## API and ChatGPT
 
-On first run, TimeboardApp creates an `admin` account and prints the password in the container logs.
+The deployed application provides `/docs` and `/openapi.json`. Task listings are paginated (`limit` default 100, maximum 200; `offset`). Closing a parent with open subtasks returns a conflict instead of a server error. The profile endpoint `PATCH /api/users/me` precedes numeric user routes. Completion claims its database state before spawning a recurrence, preventing duplicate concurrent completion.
 
-```bash
-docker compose logs -f timeboardapp
+The separate private GPT Actions interface exposes eight owner-only task operations at `/api/chatgpt`. Create a revocable read-only token by default through `POST /api/integrations/tokens`, then use API-key/Bearer authentication in a **private** custom GPT. Import `/openapi-chatgpt.json` from the HTTPS application deployment. Tokens are shown once, hashed at rest, scoped, expiring, and unable to access administrator APIs. An administrator's integration token still accesses only that administrator's own tasks.
+
+This is not a native ChatGPT MCP app, shared per-user OAuth, or an OpenAI model-serving API. Those require distinct implementations. A real GPT-editor/TLS acceptance test remains necessary; local schema tests do not establish live account compatibility. Never place access tokens in a GPT prompt, public schema, or source file.
+
+## Feature and notification boundaries
+
+Task boards, archive/restore, filtering, subtasks, cloning, manager assignment, follow/unfollow, and recurrence remain supported. Recurrence modes include post-completion intervals, daily time slots, and fixed clock/calendar schedules. Browser notifications use a connected page's SSE stream, not offline Web Push. Email supports SMTP and SendGrid; other adapters include Discord, webhook, generic API, Gotify, ntfy, and legacy UWP WNS. Actual provider delivery requires configured credentials and live testing.
+
+Public notification endpoints require HTTPS and cannot redirect into private networks. DNS results are validated and the connection is pinned to a checked address. Exact trusted LAN hosts can be configured in `security.outbound_allowed_hosts`; loopback and metadata destinations remain blocked. WNS is a legacy UWP integration, not a modern Windows App SDK integration.
+
+## Development and validation
+
+```sh
+python -m venv .venv
+. .venv/bin/activate
+pip install --require-hashes -r requirements.txt -r requirements-dev.txt
+# Configure a writable TIMEBOARDAPP_SETTINGS and local database.path.
+python -m pytest -q
+python -m pip_audit --format=json
+python -m bandit -r app -ll
+python scripts/sync_docs.py --check
 ```
 
-On first run (fresh database file), TimeboardApp also seeds a small set of demo tasks/tags under the initial admin account.
-You can remove all seeded/user data via **Admin → Database → Purge All**.
+Direct requirements live in `.in` files; generated `.txt` files lock resolved versions and hashes. Do not upgrade `pydantic_core` independently of Pydantic. Keep APScheduler within 3.x until its major-version migration is implemented. Bootstrap 5.3.8 and FullCalendar 6.1.21 are npm-locked and vendored with licenses; the breaking FullCalendar 7 migration is intentionally deferred. To refresh assets, use `npm ci --ignore-scripts` and `python scripts/vendor_assets.py`.
 
-## Resetting a forgotten admin password
+The CI workflow validates Python 3.12/3.13, security regressions, the actual generated OpenAPI schema, source/website consistency, browser smoke flows, dependency audits, and container startup. The browser test runs against an isolated temporary instance; real provider, production restore, and live ChatGPT tests are separate acceptance gates. Consult the exact commit's logs, not a historical validation report, for results.
 
-If email is enabled and the admin account has an email address on file, use the **Reset password** link on the login page.
+## Documentation and audit
 
-If email is not enabled (or the account has no email address), you can reset the admin password from the server/host with direct access to the SQLite database.
+The static website source is `docs/`. It is not the private application API. `scripts/sync_docs.py` generates route/package reference data and the sitemap; CI checks consistency and internal links. Main navigation includes the new ChatGPT guide. No production website publication or application rollout is implied by a source change.
 
-Docker Compose:
+See [the audit and feature decision tree](AUDIT_REPORT.md), [security policy](SECURITY.md), and [website documentation](docs/README.md). Historical release and validation reports remain as historical records. Only verified unreferenced icon aliases were removed.
 
-```bash
-# Prints a new random password to stdout
-docker compose exec timeboardapp python -m app.cli reset-admin
-
-# Or set a specific password (won't print unless you add --print)
-docker compose exec timeboardapp python -m app.cli reset-admin --password "NewStrongPasswordHere" --print
-```
-
-Bare metal (same machine as the app):
-
-```bash
-export TIMEBOARDAPP_SETTINGS=/path/to/settings.yml
-python -m app.cli reset-admin
-```
-
-After resetting, sign in as `admin` with the new password and change it in **Profile → Password**.
-
-## Configuration
-
-TimeboardApp loads settings from:
-
-- `TIMEBOARDAPP_SETTINGS` (default: `/data/settings.yml`)
-
-On first run, if the settings file does not exist, TimeboardApp copies `settings.sample.yml` into place and replaces sample session/JWT secret placeholders with random runtime secrets. On upgrade, existing `settings.yml` files that still contain placeholder, blank, or too-short signing secrets are repaired with new random values on startup. Weak secret environment overrides such as `CHANGE_ME_*` are ignored so they cannot force an insecure runtime configuration.
-
-Secret rotation invalidates existing browser sessions and API tokens; affected users must sign in again.
-
-Common settings:
-
-- `app.timezone`: used for displaying and interpreting date/time inputs.
-- `app.base_url`: public URL prefix when behind a reverse proxy or served from a subpath (can also be set via `TIMEBOARDAPP_BASE_URL`).
-- `security.session_secret`: used to sign UI session cookies.
-- `security.jwt_secret`: used to sign API JWT tokens.
-- `database.path`: SQLite DB file path (default `/data/timeboardapp.db`).
-- `purge.default_days`: default purge window for archived tasks.
-- `purge.interval_minutes`: how often the purge job runs.
-- `demo.enabled`: when true, TimeboardApp runs as a self-resetting demo instance.
-- `demo.reset_interval_minutes`: how often the demo dataset is wiped + rebuilt.
-- `demo.disable_external_apis`: blocks outbound notifications/webhooks/email in demo mode.
-- `email.*`: legacy seed values (copied into the database on first run if no DB settings exist). Runtime configuration is managed in the admin UI (SMTP or SendGrid).
-
-Docker note (SMTP): if TimeboardApp is running in a container, setting the SMTP host to `localhost` / `127.0.0.1` will try to connect to the container itself.
-Use a hostname/IP reachable from inside the container (for example: an SMTP container service name on the same docker-compose network, or `host.docker.internal`
-when using Docker Desktop).
-
-
-## Profile shortcuts
-
-Each user can enable **Profile → Dashboard shortcuts → Show frozen past-due tag bar**. When enabled, a sticky top bar dynamically lists tags assigned to that user's active past-due tasks. Selecting a tag opens a new dashboard browser tab filtered to that tag.
-
-## Validation and security testing
-
-Admins can open **Admin → Validation** and run the full validation suite against the running environment. The suite creates isolated temporary users/tasks/services, checks major feature paths, performs security-oriented checks, writes a redacted log, and removes the temporary records. It does not send external email or webhook traffic.
-
-Docker CLI equivalent:
-
-```bash
-docker compose exec timeboardapp python -m app.cli validate --base-url http://127.0.0.1:8888
-```
-
-By default, validation logs are written under `/data/validation`. The runtime image includes `pip-audit` so validation can confirm CVE tooling availability; outbound network access is still required for full vulnerability lookups. Copy the full output log into ChatGPT with the codebase when you want issues resolved.
-
-## API usage
-
-Swagger UI:
-
-- `/docs`
-
-Get a token:
-
-```bash
-curl -X POST http://localhost:8888/api/auth/token \
-  -H "Content-Type: application/x-www-form-urlencoded" \
-  -d "username=admin&password=YOUR_PASSWORD"
-```
-
-List tasks:
-
-```bash
-curl "http://localhost:8888/api/tasks?sort=due_date" \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Filtering and sorting:
-
-- `tag`: filter by a tag name
-- `task_type`: filter by task type
-- `status`: `active` or `archived` (completed + deleted)
-- `sort`: `due_date`, `task_type`, `name`, `archived_at`
-
-Restore an archived task:
-
-```bash
-curl -X POST http://localhost:8888/api/tasks/123/restore \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Admin: update a user (email/role):
-
-```bash
-curl -X PATCH http://localhost:8888/api/users/2 \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"is_admin": true, "email": "user@example.com"}'
-```
-
-
-Create a notification service (returns a generated routing tag):
-
-```bash
-curl -X POST http://localhost:8888/api/notifications/services \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "service_type": "ntfy",
-    "name": "Phone",
-    "enabled": true,
-    "config": { "server_url": "https://ntfy.sh", "topic": "my-topic" }
-  }'
-```
-
-List notification services:
-
-```bash
-curl http://localhost:8888/api/notifications/services \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-List notification events:
-
-```bash
-curl http://localhost:8888/api/notifications/events?limit=50 \
-  -H "Authorization: Bearer YOUR_TOKEN"
-```
-
-Admin: update email settings (admin only):
-
-```bash
-curl -X PUT http://localhost:8888/api/admin/email \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "enabled": true,
-    "provider": "smtp",
-    "smtp_host": "smtp.example.com",
-    "smtp_port": 587,
-    "smtp_username": "user@example.com",
-    "smtp_password": "YOUR_PASSWORD",
-    "smtp_from": "TimeboardApp <timeboardapp@example.com>",
-    "use_tls": true
-  }'
-
-```
-
-Admin: update SendGrid settings (admin only):
-
-```bash
-curl -X PUT http://localhost:8888/api/admin/email \
-  -H "Authorization: Bearer YOUR_ADMIN_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "enabled": true,
-    "provider": "sendgrid",
-    "sendgrid_api_key": "YOUR_SENDGRID_API_KEY",
-    "smtp_from": "TimeboardApp <timeboardapp@example.com>"
-  }'
-```
-
-## Task fields
-
-Required:
-
-- Task Name
-- Task Type
-- Recurrence type (None/Post-Completion/Multi-Slot Daily/Fixed Clock)
-
-Optional:
-
-- Due Date (if omitted, creation time is used as due date)
-- Description
-- Tags
-- URL
-
-## Notes
-
-- Deleting a task archives it as `deleted` with a timestamp and does not spawn a recurrence.
-- Completing a task archives it as `completed` with a timestamp, and spawns a new active task if recurrence is configured.
-- Admin users default to viewing only their own tasks; use the Views menu for All Tasks or a specific user.
-- Dashboard filters (tag/type/sort/page size/view) are sticky within a session until you click Reset.
-- Deleting a user permanently deletes all associated tasks.
-
-## Development checks
-
-Unit tests:
-
-```bash
-pip install -r requirements.txt -r requirements-dev.txt
-pytest -q
-```
-
-Security scan (Bandit):
-
-```bash
-bandit -r app
-```
-
-
-### Tasks API summary endpoint
-
-Authenticated API clients can call `GET /api/tasks/summary` to retrieve per-user totals derived from the bearer token. The response includes these counters: `archived`, `past_due`, `all_upcoming_due`, `due_in_0_8h`, `due_in_8_24h`, and `due_in_over_24h`.
-
+MIT licensed. Keep demo mode isolated: its public credentials and destructive resets are intentional, never appropriate for private production data.

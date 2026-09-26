@@ -16,7 +16,8 @@
     writes a redacted log, and removes the temporary validation records. It does not send external email or webhook traffic.
   </p>
   <form method="post" action="/admin/validation/run">
-    <input type="hidden" name="csrf_token" value="{{ validation_csrf }}">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+
     <button class="btn btn-primary" type="submit">Run full validation</button>
   </form>
 </div>

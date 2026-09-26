@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .clock import utc_now
+
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -71,8 +73,8 @@ def _mk_completed_task(
         status=TaskStatus.completed,
         completed_at_utc=completed_utc.astimezone(timezone.utc).replace(tzinfo=None),
         deleted_at_utc=None,
-        created_at=datetime.utcnow(),
-        updated_at=datetime.utcnow(),
+        created_at=utc_now(),
+        updated_at=utc_now(),
     )
     db.add(t)
     db.commit()

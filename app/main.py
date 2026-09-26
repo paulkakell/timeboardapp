@@ -1,16 +1,24 @@
 from __future__ import annotations
 
+from .clock import utc_now
+
 import logging
 import secrets
+from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import joinedload
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from urllib.parse import urlsplit
+from .browser_security import BrowserSecurityMiddleware
+from .paths import data_directory
+from .private_files import write_private_text
 
 from .config import get_settings
 from .crud import create_user, purge_archived_tasks
@@ -29,7 +37,7 @@ from .meta_settings import (
 from .migrations import ensure_db_schema
 from .models import Task, TaskStatus, User
 from .notifications import EVENT_PAST_DUE, notify_task_event, shutdown_notification_dispatcher
-from .routers import api_admin, api_auth, api_notifications, api_tags, api_tasks, api_users, ui
+from .routers import chatgpt, api_admin, api_auth, api_notifications, api_tags, api_tasks, api_users, ui
 from .utils.time_utils import format_dt_display, to_local
 from .version import APP_VERSION
 
@@ -42,17 +50,33 @@ setup_logging(level=settings.logging.level)
 logger = logging.getLogger("timeboardapp")
 
 
-app = FastAPI(title=settings.app.name, version=APP_VERSION)
+@asynccontextmanager
+async def lifespan(application: FastAPI):
+    on_startup()
+    try:
+        yield
+    finally:
+        on_shutdown()
 
-app.add_middleware(SessionMiddleware, secret_key=settings.security.session_secret)
+
+app = FastAPI(title=settings.app.name, version=APP_VERSION, lifespan=lifespan)
+
+app.add_middleware(BrowserSecurityMiddleware, base_url=settings.app.base_url)
+secure_cookies = settings.security.secure_cookies
+if secure_cookies is None:
+    secure_cookies = settings.app.base_url.startswith("https://")
+app.add_middleware(SessionMiddleware, secret_key=settings.security.session_secret,
+                   https_only=secure_cookies, same_site="lax", max_age=86400)
+if settings.app.base_url:
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.app.base_url).hostname, "localhost", "127.0.0.1", "[::1]"])
 
 
 SECURITY_CONTENT_SECURITY_POLICY = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
-    "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+    "script-src 'self' 'unsafe-inline'; "
+    "style-src 'self' 'unsafe-inline'; "
     "img-src 'self' data:; "
-    "font-src 'self' data: https://cdn.jsdelivr.net; "
+    "font-src 'self' data:; "
     "connect-src 'self'; "
     "object-src 'none'; "
     "base-uri 'self'; "
@@ -67,12 +91,18 @@ async def add_browser_security_headers(request: Request, call_next):
 
     response = await call_next(request)
     response.headers.setdefault("X-Frame-Options", "DENY")
-    response.headers.setdefault("Content-Security-Policy", SECURITY_CONTENT_SECURITY_POLICY)
+    policy = SECURITY_CONTENT_SECURITY_POLICY
+    # FastAPI's optional interactive documentation still loads its own viewer.
+    if request.url.path in {"/docs", "/redoc", "/docs/oauth2-redirect"}:
+        policy = policy.replace("script-src 'self'", "script-src 'self' https://cdn.jsdelivr.net").replace("style-src 'self'", "style-src 'self' https://cdn.jsdelivr.net")
+    response.headers.setdefault("Content-Security-Policy", policy)
     response.headers.setdefault("X-Content-Type-Options", "nosniff")
     response.headers.setdefault("Referrer-Policy", "same-origin")
+    if not request.url.path.startswith("/static/"):
+        response.headers.setdefault("Cache-Control", "no-store")
 
-    forwarded_proto = str(request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
-    scheme = forwarded_proto or str(request.url.scheme or "").lower()
+    # The ASGI server may set scheme using forwarding headers only from trusted proxies.
+    scheme = str(request.url.scheme or "").lower()
     if scheme == "https":
         response.headers.setdefault("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
     return response
@@ -89,7 +119,18 @@ app.include_router(api_tags.router, prefix="/api/tags", tags=["tags"])
 app.include_router(api_notifications.router, prefix="/api/notifications", tags=["notifications"])
 app.include_router(api_admin.router, prefix="/api/admin", tags=["admin"])
 
+app.include_router(chatgpt.router)
+app.include_router(chatgpt.tokens_router)
 app.include_router(ui.router)
+
+
+@app.get("/openapi-chatgpt.json", include_in_schema=False)
+def chatgpt_openapi():
+    from .chatgpt_schema import build_chatgpt_schema
+    if not settings.app.base_url.startswith("https://"):
+        raise HTTPException(503, "Configure an HTTPS TIMEBOARDAPP_BASE_URL before importing GPT Actions")
+    return build_chatgpt_schema(app, settings.app.base_url)
+
 
 
 scheduler: BackgroundScheduler | None = None
@@ -144,7 +185,7 @@ def _configure_email_jobs(app: FastAPI, sched: BackgroundScheduler) -> None:
             if not email_enabled(dbx):
                 return
 
-            now = datetime.utcnow().replace(tzinfo=None)
+            now = utc_now().replace(tzinfo=None)
 
             # Find overdue active tasks for users with email addresses.
             q = (
@@ -277,7 +318,7 @@ def _configure_past_due_notification_job(app: FastAPI, sched: BackgroundSchedule
     def _past_due_job() -> None:
         dbx = SessionLocal()
         try:
-            now = datetime.utcnow().replace(tzinfo=None)
+            now = utc_now().replace(tzinfo=None)
             # Scan active tasks that are overdue.
             tasks = (
                 dbx.query(Task)
@@ -453,7 +494,6 @@ def _public_base_url() -> str:
     return base
 
 
-@app.on_event("startup")
 def on_startup() -> None:
     global scheduler
 
@@ -499,11 +539,13 @@ def on_startup() -> None:
         else:
             if db.query(User).count() == 0:
                 admin_password = secrets.token_urlsafe(12)
+                credential_path = data_directory() / "initial-admin-password.txt"
+                write_private_text(credential_path, admin_password + "\n")
                 create_user(db, username="admin", password=admin_password, is_admin=True)
                 logger.warning("============================================================")
                 logger.warning("TimeboardApp initial admin account created")
                 logger.warning("Username: admin")
-                logger.warning("Password: %s", admin_password)
+                logger.warning("Read the initial password from %s (owner-only); remove it after changing the password.", credential_path)
                 logger.warning("Please log in and change this password.")
                 logger.warning("============================================================")
 
@@ -599,7 +641,6 @@ def on_startup() -> None:
     scheduler.start()
 
 
-@app.on_event("shutdown")
 def on_shutdown() -> None:
     global scheduler
     if scheduler:

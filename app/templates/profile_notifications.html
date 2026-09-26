@@ -28,6 +28,7 @@
           </div>
         </div>
         <form method="post" action="/profile/notifications" onsubmit="return confirm('Delete this notification service? This will also delete its generated tag and remove it from tasks.');">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
           <input type="hidden" name="action" value="delete">
           <input type="hidden" name="service_id" value="{{ svc.id }}">
           <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
@@ -35,6 +36,7 @@
       </div>
 
       <form method="post" action="/profile/notifications" class="mt-3">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
         <input type="hidden" name="action" value="update">
         <input type="hidden" name="service_id" value="{{ svc.id }}">
 
@@ -155,6 +157,7 @@
 <h2 class="h5">Add a new notification service</h2>
 
 <form method="post" action="/profile/notifications">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
   <input type="hidden" name="action" value="create">
 
   <div class="row">

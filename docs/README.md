@@ -1,21 +1,7 @@
-# TimeboardApp Website
+# Project website
 
-This folder contains a static website intended to be deployed at `timeboardapp.com`.
+Static site published from `docs/`; the application API is served separately by FastAPI.
 
-It is designed to be hosted as-is (no build step):
+`python scripts/sync_docs.py` regenerates the package/route reference, machine-readable project metadata, and sitemap. CI runs `--check` plus internal-link/asset tests. Update the narrative HTML whenever behavior changes. Preserve release status: this maintenance branch is not a release or a live-site deployment.
 
-- `index.html` is the landing page.
-- `docs/` contains documentation pages.
-- `assets/` contains CSS/JS/images.
-
-Deployment options:
-
-1) GitHub Pages
-- Publish the `web/` folder as the Pages root (or copy its contents to the Pages root).
-- If you use a custom domain, keep the `CNAME` file.
-
-2) Any static host
-- Upload the contents of this folder.
-- Configure the host to serve `index.html` for `/`.
-
-If you prefer hosting the docs inside the application, you can also copy the HTML into a directory served by your reverse proxy.
+Preview: `python -m http.server 8080 --directory docs`. The deployment uses the custom domain in `CNAME`, so absolute links assume that site root.

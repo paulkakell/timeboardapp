@@ -14,6 +14,7 @@
   <p class="text-muted">WNS requires app-level credentials (Package SID + Client Secret). Each user must also provide a device Channel URI in their profile notification settings.</p>
 
   <form method="post" action="/admin/notifications">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
     <div class="form-check form-switch mb-3">
       <input class="form-check-input" type="checkbox" name="wns_enabled" id="wns_enabled" {% if wns_cfg.enabled %}checked{% endif %}>
       <label class="form-check-label" for="wns_enabled">Enable WNS</label>

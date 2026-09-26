@@ -1,0 +1,452 @@
+{
+  "version": "00.12.03",
+  "release_status": "unreleased maintenance changes based on this version",
+  "review_date": "2026-09-26",
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/admin/email",
+      "handler": "api_admin.get_email"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/email",
+      "handler": "api_admin.update_email"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/logging",
+      "handler": "api_admin.get_logging"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/logging",
+      "handler": "api_admin.update_logging"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/logs/files",
+      "handler": "api_admin.list_logs"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/logs/files/{filename}",
+      "handler": "api_admin.read_log_file"
+    },
+    {
+      "method": "GET",
+      "path": "/api/admin/wns",
+      "handler": "api_admin.get_wns"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/admin/wns",
+      "handler": "api_admin.update_wns"
+    },
+    {
+      "method": "GET",
+      "path": "/api/auth/me",
+      "handler": "api_auth.api_me"
+    },
+    {
+      "method": "POST",
+      "path": "/api/auth/token",
+      "handler": "api_auth.login_for_access_token"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chatgpt/tasks",
+      "handler": "chatgpt.list_tasks"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chatgpt/tasks",
+      "handler": "chatgpt.create_task"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chatgpt/tasks/summary",
+      "handler": "chatgpt.summary"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/chatgpt/tasks/{task_id}",
+      "handler": "chatgpt.archive_task"
+    },
+    {
+      "method": "GET",
+      "path": "/api/chatgpt/tasks/{task_id}",
+      "handler": "chatgpt.get_task"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/chatgpt/tasks/{task_id}",
+      "handler": "chatgpt.update_task"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chatgpt/tasks/{task_id}/complete",
+      "handler": "chatgpt.complete_task"
+    },
+    {
+      "method": "POST",
+      "path": "/api/chatgpt/tasks/{task_id}/restore",
+      "handler": "chatgpt.restore_task"
+    },
+    {
+      "method": "GET",
+      "path": "/api/integrations/tokens",
+      "handler": "chatgpt.list_tokens"
+    },
+    {
+      "method": "POST",
+      "path": "/api/integrations/tokens",
+      "handler": "chatgpt.issue_token"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/integrations/tokens/{token_id}",
+      "handler": "chatgpt.revoke_token"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/events",
+      "handler": "api_notifications.list_events"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/services",
+      "handler": "api_notifications.list_services"
+    },
+    {
+      "method": "POST",
+      "path": "/api/notifications/services",
+      "handler": "api_notifications.create_service"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/notifications/services/{service_id}",
+      "handler": "api_notifications.delete_service"
+    },
+    {
+      "method": "GET",
+      "path": "/api/notifications/services/{service_id}",
+      "handler": "api_notifications.get_service"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/notifications/services/{service_id}",
+      "handler": "api_notifications.update_service"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tags/",
+      "handler": "api_tags.api_list_tags"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/",
+      "handler": "api_tasks.api_list_tasks"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/",
+      "handler": "api_tasks.api_create_task"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/summary",
+      "handler": "api_tasks.api_task_summary"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/tasks/{task_id}",
+      "handler": "api_tasks.api_delete_task"
+    },
+    {
+      "method": "GET",
+      "path": "/api/tasks/{task_id}",
+      "handler": "api_tasks.api_get_task"
+    },
+    {
+      "method": "PUT",
+      "path": "/api/tasks/{task_id}",
+      "handler": "api_tasks.api_update_task"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{task_id}/complete",
+      "handler": "api_tasks.api_complete_task"
+    },
+    {
+      "method": "POST",
+      "path": "/api/tasks/{task_id}/restore",
+      "handler": "api_tasks.api_restore_task"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/",
+      "handler": "api_users.api_list_users"
+    },
+    {
+      "method": "POST",
+      "path": "/api/users/",
+      "handler": "api_users.api_create_user"
+    },
+    {
+      "method": "GET",
+      "path": "/api/users/me",
+      "handler": "api_users.api_get_me"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/users/me",
+      "handler": "api_users.api_update_me"
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/users/{user_id}",
+      "handler": "api_users.api_delete_user"
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/users/{user_id}",
+      "handler": "api_users.api_update_user"
+    }
+  ],
+  "locked_runtime_packages": [
+    {
+      "name": "annotated-doc",
+      "version": "0.0.5"
+    },
+    {
+      "name": "annotated-types",
+      "version": "0.8.0"
+    },
+    {
+      "name": "anyio",
+      "version": "4.15.1"
+    },
+    {
+      "name": "apscheduler",
+      "version": "3.11.3"
+    },
+    {
+      "name": "argon2-cffi",
+      "version": "25.1.0"
+    },
+    {
+      "name": "argon2-cffi-bindings",
+      "version": "26.1.0"
+    },
+    {
+      "name": "boolean-py",
+      "version": "5.0"
+    },
+    {
+      "name": "cachecontrol",
+      "version": "0.14.4"
+    },
+    {
+      "name": "certifi",
+      "version": "2026.7.22"
+    },
+    {
+      "name": "cffi",
+      "version": "2.1.1"
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.5.1"
+    },
+    {
+      "name": "click",
+      "version": "8.5.0"
+    },
+    {
+      "name": "cyclonedx-python-lib",
+      "version": "11.12.0"
+    },
+    {
+      "name": "defusedxml",
+      "version": "0.7.1"
+    },
+    {
+      "name": "fastapi",
+      "version": "0.141.1"
+    },
+    {
+      "name": "filelock",
+      "version": "4.0.4"
+    },
+    {
+      "name": "h11",
+      "version": "0.16.0"
+    },
+    {
+      "name": "httptools",
+      "version": "0.8.0"
+    },
+    {
+      "name": "idna",
+      "version": "3.20"
+    },
+    {
+      "name": "itsdangerous",
+      "version": "2.2.0"
+    },
+    {
+      "name": "jinja2",
+      "version": "3.1.6"
+    },
+    {
+      "name": "license-expression",
+      "version": "30.4.4"
+    },
+    {
+      "name": "markdown-it-py",
+      "version": "4.2.0"
+    },
+    {
+      "name": "markupsafe",
+      "version": "3.0.3"
+    },
+    {
+      "name": "mdurl",
+      "version": "0.1.2"
+    },
+    {
+      "name": "msgpack",
+      "version": "1.2.2"
+    },
+    {
+      "name": "packageurl-python",
+      "version": "0.17.6"
+    },
+    {
+      "name": "packaging",
+      "version": "26.3"
+    },
+    {
+      "name": "pip-api",
+      "version": "0.0.35"
+    },
+    {
+      "name": "pip-audit",
+      "version": "2.10.1"
+    },
+    {
+      "name": "pip-requirements-parser",
+      "version": "32.0.1"
+    },
+    {
+      "name": "platformdirs",
+      "version": "4.12.0"
+    },
+    {
+      "name": "py-serializable",
+      "version": "2.1.0"
+    },
+    {
+      "name": "pycparser",
+      "version": "3.0"
+    },
+    {
+      "name": "pydantic",
+      "version": "2.13.5"
+    },
+    {
+      "name": "pydantic-core",
+      "version": "2.46.5"
+    },
+    {
+      "name": "pygments",
+      "version": "2.21.0"
+    },
+    {
+      "name": "pyjwt",
+      "version": "2.15.0"
+    },
+    {
+      "name": "pyparsing",
+      "version": "3.3.3"
+    },
+    {
+      "name": "python-dotenv",
+      "version": "1.2.3"
+    },
+    {
+      "name": "python-multipart",
+      "version": "0.0.32"
+    },
+    {
+      "name": "pyyaml",
+      "version": "6.0.3"
+    },
+    {
+      "name": "requests",
+      "version": "2.34.2"
+    },
+    {
+      "name": "rich",
+      "version": "15.0.0"
+    },
+    {
+      "name": "sortedcontainers",
+      "version": "2.4.0"
+    },
+    {
+      "name": "sqlalchemy",
+      "version": "2.1.1"
+    },
+    {
+      "name": "starlette",
+      "version": "1.7.0"
+    },
+    {
+      "name": "tomli",
+      "version": "2.4.1"
+    },
+    {
+      "name": "tomli-w",
+      "version": "1.2.0"
+    },
+    {
+      "name": "typing-extensions",
+      "version": "4.16.0"
+    },
+    {
+      "name": "typing-inspection",
+      "version": "0.4.4"
+    },
+    {
+      "name": "tzlocal",
+      "version": "5.4.4"
+    },
+    {
+      "name": "urllib3",
+      "version": "2.8.0"
+    },
+    {
+      "name": "uvicorn",
+      "version": "0.54.0"
+    },
+    {
+      "name": "uvloop",
+      "version": "0.22.1"
+    },
+    {
+      "name": "watchfiles",
+      "version": "1.3.0"
+    },
+    {
+      "name": "websockets",
+      "version": "17.1"
+    }
+  ],
+  "browser_packages": {
+    "bootstrap": "5.3.8",
+    "fullcalendar": "6.1.21",
+    "@popperjs/core": "2.11.8"
+  }
+}

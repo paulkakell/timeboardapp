@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block extra_head %}
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css">
+  {# FullCalendar 6 injects its own CSS; there is no global CSS bundle. #}
   <style>
     #tb-calendar { min-height: 70vh; }
     .tb-legend-swatch {
@@ -66,7 +66,7 @@
 {% endblock %}
 
 {% block extra_scripts %}
-  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js"></script>
+  <script src="/static/vendor/fullcalendar.min.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', function() {
       var el = document.getElementById('tb-calendar');

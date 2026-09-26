@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ..clock import utc_now
+
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -7,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import get_current_user_api
 from ..crud import (
+    OpenSubtasksError,
     complete_task,
     create_task,
     get_task,
@@ -17,6 +20,7 @@ from ..crud import (
     update_task,
 )
 from ..db import get_db
+from ..models import TaskStatus
 from ..schemas import TaskCompleteResponse, TaskCreate, TaskOut, TaskSummaryOut, TaskUpdate
 
 
@@ -25,6 +29,9 @@ router = APIRouter()
 
 @router.get("/", response_model=list[TaskOut])
 def api_list_tasks(
+    limit: int = Query(default=100, ge=1, le=200),
+    offset: int = Query(default=0, ge=0, le=1000000),
+    search: str | None = Query(default=None, max_length=255),
     include_archived: bool = Query(default=False),
     status: str | None = Query(default=None, description="Filter by status: active/completed/deleted/archived"),
     tag: str | None = Query(default=None),
@@ -38,6 +45,7 @@ def api_list_tasks(
         return list_tasks(
             db,
             current_user=current_user,
+            limit=limit, offset=offset, search=search,
             include_archived=include_archived,
             status=status,
             tag=tag,
@@ -69,8 +77,8 @@ def api_create_task(
             owner=current_user,
             name=payload.name,
             task_type=payload.task_type,
-            description=payload.description,
-            url=payload.url,
+            description=(payload.description or "") if "description" in payload.model_fields_set else None,
+            url=(payload.url or "") if "url" in payload.model_fields_set else None,
             due_date=payload.due_date,
             recurrence_type=payload.recurrence_type,
             recurrence_interval=payload.recurrence_interval,
@@ -114,14 +122,16 @@ def api_update_task(
             current_user=current_user,
             name=payload.name,
             task_type=payload.task_type,
-            description=payload.description,
-            url=payload.url,
+            description=(payload.description or "") if "description" in payload.model_fields_set else None,
+            url=(payload.url or "") if "url" in payload.model_fields_set else None,
             due_date=payload.due_date,
             recurrence_type=payload.recurrence_type,
             recurrence_interval=payload.recurrence_interval,
             recurrence_times=payload.recurrence_times,
             tags=payload.tags,
         )
+    except OpenSubtasksError as exc:
+        raise HTTPException(status_code=409, detail={"code": "open_subtasks", "message": "Close subtasks first or use the UI to confirm cascading", "task_ids": [t.id for t in exc.open_tasks]}) from None
     except PermissionError:
         raise HTTPException(status_code=403, detail="Not allowed")
     except ValueError as e:
@@ -140,9 +150,11 @@ def api_delete_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    when = datetime.utcnow().replace(tzinfo=None)
+    when = utc_now().replace(tzinfo=None)
     try:
         deleted = soft_delete_task(db, task=task, current_user=current_user, when_utc=when)
+    except OpenSubtasksError as exc:
+        raise HTTPException(status_code=409, detail={"code": "open_subtasks", "message": "Close subtasks first or use the UI to confirm cascading", "task_ids": [t.id for t in exc.open_tasks]}) from None
     except PermissionError:
         raise HTTPException(status_code=403, detail="Not allowed")
     return deleted
@@ -158,9 +170,15 @@ def api_complete_task(
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    when = datetime.utcnow().replace(tzinfo=None)
+    if not current_user.is_admin and task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not allowed")
+    if task.status != TaskStatus.active:
+        raise HTTPException(status_code=409, detail="Task is not active")
+    when = utc_now().replace(tzinfo=None)
     try:
         completed, spawned = complete_task(db, task=task, current_user=current_user, when_utc=when)
+    except OpenSubtasksError as exc:
+        raise HTTPException(status_code=409, detail={"code": "open_subtasks", "message": "Close subtasks first or use the UI to confirm cascading", "task_ids": [t.id for t in exc.open_tasks]}) from None
     except PermissionError:
         raise HTTPException(status_code=403, detail="Not allowed")
 
@@ -179,6 +197,8 @@ def api_restore_task(
 
     try:
         restored = restore_task(db, task=task, current_user=current_user)
+    except OpenSubtasksError as exc:
+        raise HTTPException(status_code=409, detail={"code": "open_subtasks", "message": "Close subtasks first or use the UI to confirm cascading", "task_ids": [t.id for t in exc.open_tasks]}) from None
     except PermissionError:
         raise HTTPException(status_code=403, detail="Not allowed")
 

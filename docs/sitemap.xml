@@ -1,13 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://timeboardapp.com/</loc></url>
-  <url><loc>https://timeboardapp.com/docs/</loc></url>
-  <url><loc>https://timeboardapp.com/docs/getting-started.html</loc></url>
-  <url><loc>https://timeboardapp.com/docs/configuration.html</loc></url>
-  <url><loc>https://timeboardapp.com/docs/deployment.html</loc></url>
   <url><loc>https://timeboardapp.com/docs/api.html</loc></url>
-  <url><loc>https://timeboardapp.com/docs/demo.html</loc></url>
   <url><loc>https://timeboardapp.com/docs/architecture.html</loc></url>
+  <url><loc>https://timeboardapp.com/docs/chatgpt.html</loc></url>
+  <url><loc>https://timeboardapp.com/docs/configuration.html</loc></url>
+  <url><loc>https://timeboardapp.com/docs/demo.html</loc></url>
+  <url><loc>https://timeboardapp.com/docs/deployment.html</loc></url>
+  <url><loc>https://timeboardapp.com/docs/getting-started.html</loc></url>
+  <url><loc>https://timeboardapp.com/docs/index.html</loc></url>
+  <url><loc>https://timeboardapp.com/docs/reference.html</loc></url>
   <url><loc>https://timeboardapp.com/docs/security.html</loc></url>
+  <url><loc>https://timeboardapp.com/</loc></url>
   <url><loc>https://timeboardapp.com/license.html</loc></url>
 </urlset>

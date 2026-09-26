@@ -142,6 +142,8 @@ def test_tasks_summary_endpoint_uses_authenticated_user_scope(settings_tmp, tmp_
         create_task(seed, owner=user_a, name="a soon", task_type="ops", due_date=now + timedelta(hours=1))
         create_task(seed, owner=user_a, name="a later", task_type="ops", due_date=now + timedelta(hours=30))
         create_task(seed, owner=user_b, name="b overdue", task_type="ops", due_date=now - timedelta(hours=2))
+        token_a = create_access_token(subject="user-a", is_admin=False, user=user_a)
+        token_b = create_access_token(subject="user-b", is_admin=False, user=user_b)
     finally:
         seed.close()
 
@@ -158,8 +160,6 @@ def test_tasks_summary_endpoint_uses_authenticated_user_scope(settings_tmp, tmp_
     app.dependency_overrides[get_db] = override_get_db
 
     client = TestClient(app)
-    token_a = create_access_token(subject="user-a", is_admin=False)
-    token_b = create_access_token(subject="user-b", is_admin=False)
 
     response_a = client.get("/api/tasks/summary", headers={"Authorization": f"Bearer {token_a}"})
     assert response_a.status_code == 200
