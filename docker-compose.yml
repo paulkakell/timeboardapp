@@ -1,5 +1,6 @@
 services:
   timeboardapp:
+    image: timeboardapp:00.13.00
     build: .
     container_name: ${CONTAINER_NAME:-timeboardapp}
     user: "${PUID:-1000}:${PGID:-1000}"

@@ -1,4 +1,4 @@
-name: Regression, security, browser and container gates
+name: CI
 on:
   push:
     branches: [main, 'audit/security-api-refresh-2026-09-26']
@@ -12,7 +12,7 @@ defaults:
     shell: bash
 concurrency:
   group: audit-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   regression:
     runs-on: ubuntu-latest
@@ -47,8 +47,21 @@ jobs:
       - name: Source and website contract checks
         run: |
           python scripts/sync_docs.py --check
+          python scripts/release_metadata.py --check
           python -m compileall -q app scripts
           find app/static/js -name '*.js' -exec node --check {} \;
+      - name: Lint and type-check release tooling
+        if: matrix.python == '3.13'
+        run: |
+          mkdir -p /tmp/timeboard-quality/ruff /tmp/timeboard-quality/pyright
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/astral-sh/ruff/releases/download/0.16.9/ruff-x86_64-unknown-linux-gnu.tar.gz -o /tmp/timeboard-quality/ruff.tar.gz
+          echo '1bfbb819b5d4f9af501748862276b60e412d336034d99387691a4d4bce7a6f13  /tmp/timeboard-quality/ruff.tar.gz' | sha256sum --check
+          tar -xzf /tmp/timeboard-quality/ruff.tar.gz -C /tmp/timeboard-quality/ruff --strip-components=1
+          /tmp/timeboard-quality/ruff/ruff check scripts/release_metadata.py scripts/publish_release.py tests/test_release_metadata.py 2>&1 | tee audit-evidence/release-lint.txt
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/microsoft/pyright/releases/download/1.1.414/pyright.tgz -o /tmp/timeboard-quality/pyright.tgz
+          echo 'bf5f473f6167c0d14175492c3263d783b4489a6956e1c06c18e15228e3a3fa42  /tmp/timeboard-quality/pyright.tgz' | sha256sum --check
+          tar -xzf /tmp/timeboard-quality/pyright.tgz -C /tmp/timeboard-quality/pyright --strip-components=1
+          node /tmp/timeboard-quality/pyright/index.js --pythonversion 3.13 --outputjson scripts/release_metadata.py scripts/publish_release.py > audit-evidence/release-types.json
       - name: Dependency vulnerability gate
         if: always()
         run: python -m pip_audit --format=json --output=audit-evidence/pip-audit.json
@@ -85,8 +98,11 @@ jobs:
         run: |
           mkdir -p audit-evidence
           docker compose config -q
-          docker build -t timeboardapp:audit . 2>&1 | tee audit-evidence/docker-build.txt
+          docker build --build-arg VCS_REF="$GITHUB_SHA" -t timeboardapp:audit . 2>&1 | tee audit-evidence/docker-build.txt
           test "$(docker image inspect timeboardapp:audit --format '{{.Config.User}}')" = '1000:1000'
+          version="$(python -c 'import runpy; print(runpy.run_path("app/version.py")["APP_VERSION"])')"
+          test "$(docker image inspect timeboardapp:audit --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$version"
+          test "$(docker image inspect timeboardapp:audit --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
       - name: Non-root, read-only container smoke
         run: |
           docker run -d --name timeboard-audit --mount type=volume,src=timeboard-audit-data,dst=/data --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m --cap-drop ALL --security-opt no-new-privileges timeboardapp:audit
@@ -113,3 +129,19 @@ jobs:
           name: audit-container
           path: audit-evidence/
           retention-days: 30
+  release:
+    name: Publish checked source release
+    needs: [regression, container]
+    if: github.repository == 'paulkakell/timeboardapp' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Publish exact-commit tag, notes, source archives and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/publish_release.py

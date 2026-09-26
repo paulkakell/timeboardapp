@@ -2,7 +2,15 @@
 
 A self-hosted task board with recurrence, nested subtasks, calendar and mobile views, tags, manager assignment, task following, notifications, and administrator tools. FastAPI, Jinja, SQLAlchemy/SQLite, and APScheduler power the application.
 
-**Release status:** this maintenance source update is based on application version `00.12.03` and is not a published release. It changes authentication and deployment behavior. Read the migration guidance before deploying it.
+**Source version:** `00.13.00`. This feature release includes security fixes and breaking authentication/deployment changes. Read [release notes](RELEASE_NOTES_00.13.00.md) and [versioning guidance](VERSIONING.md) before upgrading. A source release does not automatically upgrade existing application deployments.
+
+<!-- release-badges:start -->
+[![Source version 00.13.00](docs/assets/badges/version.svg)](https://github.com/paulkakell/timeboardapp/releases/tag/v00.13.00)
+[![CI on main](https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml/badge.svg?branch=main&event=push)](https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml?query=branch%3Amain)
+[![Tested Python 3.12 and 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](https://github.com/paulkakell/timeboardapp/blob/main/.github/workflows/audit.yml)
+[![MIT license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/paulkakell/timeboardapp/blob/main/LICENSE)
+[![Private GPT Actions](https://img.shields.io/badge/ChatGPT-private%20GPT%20Actions-blue)](https://timeboardapp.com/docs/chatgpt.html)
+<!-- release-badges:end -->
 
 ## Start locally
 
@@ -49,6 +57,7 @@ python -m pytest -q
 python -m pip_audit --format=json
 python -m bandit -r app -ll
 python scripts/sync_docs.py --check
+python scripts/release_metadata.py --check
 ```
 
 Direct requirements live in `.in` files; generated `.txt` files lock resolved versions and hashes. Do not upgrade `pydantic_core` independently of Pydantic. Keep APScheduler within 3.x until its major-version migration is implemented. Bootstrap 5.3.8 and FullCalendar 6.1.21 are npm-locked and vendored with licenses; the breaking FullCalendar 7 migration is intentionally deferred. To refresh assets, use `npm ci --ignore-scripts` and `python scripts/vendor_assets.py`.
@@ -57,7 +66,7 @@ The CI workflow validates Python 3.12/3.13, security regressions, the actual gen
 
 ## Documentation and audit
 
-The static website source is `docs/`. It is not the private application API. `scripts/sync_docs.py` generates route/package reference data and the sitemap; CI checks consistency and internal links. Main navigation includes the new ChatGPT guide. No production website publication or application rollout is implied by a source change.
+The static website source is `docs/`. It is not the private application API. `scripts/sync_docs.py` generates route/package reference data and the sitemap; `scripts/release_metadata.py` synchronizes source version, release links, and badges; CI checks consistency and internal links. Main navigation includes the new ChatGPT guide. No production website publication or application rollout is implied by a source change.
 
 See [the audit and feature decision tree](AUDIT_REPORT.md), [security policy](SECURITY.md), and [website documentation](docs/README.md). Historical release and validation reports remain as historical records. Only verified unreferenced icon aliases were removed.
 

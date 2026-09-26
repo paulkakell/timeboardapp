@@ -1,6 +1,6 @@
-# TimeboardApp source audit and maintenance candidate
+# TimeboardApp source audit for 00.13.00
 
-Review date: September 26, 2026. Original main commit: `1a9d32a4e6770870b4d0a1094cb2c9177d040706`. Base application version: `00.12.03`. Changes are proposed on an isolated audit branch, not merged or deployed. This report is a source assessment and regression record, not a penetration-test certificate.
+Review date: September 26, 2026. Original main commit: `1a9d32a4e6770870b4d0a1094cb2c9177d040706`. Base application version: `00.12.03`. The reviewed changes are included in source release `00.13.00` via PR #30. Merge/tag publication does not establish deployment of any running instance. The pre-versioning evidence below remains historical; the release workflow preserves fresh exact-commit validation artifacts. This report is a source assessment and regression record, not a penetration-test certificate.
 
 ## Baseline evidence
 
