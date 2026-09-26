@@ -1,5 +1,16 @@
 # Changelog
 
+## 00.13.01 - 2026-09-26
+
+- Fix/CI: Separate read-only release-intent detection from publication. Ordinary pushes with an unchanged application version run CI without attempting to recreate an existing release.
+- Fix/Release: Compare versions across the full push before/after range, not only the final commit. Preserve explicit manual retries, exact-commit checks, immutable existing tags, and incomplete-release safeguards.
+- Fix/Validation: Parse previous version source as a literal, reject missing/rewritten history and version decreases, and test documentation-only pushes with real local Git history.
+- Maintenance: Synchronize version 00.13.01 (npm 0.13.1), container metadata, documentation and generated badges. Dependencies are unchanged; remove the deleted audit branch from the CI push filter.
+
+Compatibility: Backward-compatible patch. No new application, API, database, authentication, environment-variable or dependency changes. Prior 00.13.00 upgrade precautions remain applicable.
+
+Refs: PR #30 release regression; failed CI run 36261828606, job 108459388374; affected main 81cbec352bfde90ed7861460736ffdb6b53e7c5e; preserved v00.13.00 at 676295c7dc0338b5841e5f7ee3e40c7d8ddf3861. The patch PR and exact-commit CI artifacts record validation results.
+
 ## 00.13.00 - 2026-09-26
 
 - Additive: Introduce private, owner-only GPT Actions with scoped/revocable integration tokens and a generated OpenAPI contract.
