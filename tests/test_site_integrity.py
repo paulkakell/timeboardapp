@@ -1,10 +1,10 @@
 from __future__ import annotations
 import hashlib
 import json
+import re
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SITE = ROOT / 'docs'
@@ -60,7 +60,6 @@ def test_vendored_runtime_assets_and_license_checksums():
 
 
 def test_template_static_asset_references_exist():
-    import re
     for file in (ROOT/'app/templates').glob('*.html'):
         for relative in re.findall(r'(?:src|href)=[\'"](/static/[^\'"?{}]+)',file.read_text()):
             assert (ROOT/'app'/relative.lstrip('/')).is_file(), f'{file}: {relative}'
@@ -76,4 +75,6 @@ def test_removed_aliases_are_unreferenced():
     for name in removed:
         assert not (ROOT/name).exists()
         url = '/' + name.removeprefix('app/')
-        assert all(url not in source for source in sources), name
+        # Match a complete path, not /favicon.ico inside /static/favicon.ico.
+        reference = re.compile(r'(?<![A-Za-z0-9_./-])' + re.escape(url) + r'(?![A-Za-z0-9_./-])')
+        assert all(not reference.search(source) for source in sources), name
