@@ -1,0 +1,82 @@
+name: Bug report
+description: Report reproducible incorrect behavior in TimeboardApp.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is a public report. For vulnerabilities, follow [SECURITY.md](https://github.com/paulkakell/timeboardapp/blob/main/SECURITY.md) instead.
+        Do not share passwords, tokens, authorization headers, private tasks, databases, settings files, or unredacted screenshots/logs. Use synthetic examples.
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and pull requests for this problem.
+          required: true
+        - label: This is not a security vulnerability report, and I removed private data and credentials.
+          required: true
+        - label: I agree to follow the [Code of Conduct](https://github.com/paulkakell/timeboardapp/blob/main/CODE_OF_CONDUCT.md).
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: Application version or commit
+      description: Copy the displayed xx.xx.xx version or the full commit SHA. Do not enter only latest.
+      placeholder: "Version from the application footer, or git rev-parse HEAD"
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Docker Compose
+        - Docker without Compose
+        - Python source checkout
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include OS, relevant browser/version, Python or Docker/Compose version, and proxy use. Omit hostnames or paths that reveal private details.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide a minimal sequence with synthetic data, starting from a known state.
+      placeholder: "1. Sign in with a disposable test account.\n2. Open...\n3. Observe..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the error text and whether the problem is repeatable. Do not disclose a security exploit here.
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Sanitized diagnostics or CI link
+      description: Optional minimal redacted output or a public CI job URL. Review it for passwords, tokens, private tasks, and personal data before submitting; do not upload databases or settings files.
+      render: text
+    validations:
+      required: false
+  - type: textarea
+    id: workaround
+    attributes:
+      label: Workaround or last known working version
+      description: Optional comparison that may help isolate a regression.
+    validations:
+      required: false

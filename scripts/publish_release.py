@@ -1,6 +1,8 @@
 """Publish checked main source only; never move tags or overwrite releases."""
 from __future__ import annotations
 
+import argparse
+import ast
 import hashlib
 import json
 import os
@@ -60,8 +62,67 @@ def require_tag_commit(ref: dict[str, Any], expected: str) -> None:
     raise ValueError("Release tag does not resolve to a commit")
 
 
+
+def source_version(source: str) -> tuple[int, int, int]:
+    """Read a literal version without executing code from an earlier commit."""
+    assignments = [
+        node for node in ast.parse(source).body
+        if isinstance(node, ast.Assign)
+        and any(isinstance(target, ast.Name) and target.id == "APP_VERSION" for target in node.targets)
+    ]
+    if len(assignments) != 1:
+        raise ValueError("Expected one literal APP_VERSION assignment")
+    version = ast.literal_eval(assignments[0].value)
+    if not isinstance(version, str) or not re.fullmatch(r"[0-9]{2}\.[0-9]{2}\.[0-9]{2}", version):
+        raise ValueError("APP_VERSION must use xx.xx.xx")
+    release, feature, fix = map(int, version.split("."))
+    return release, feature, fix
+
+
+def publication_requested(env: Mapping[str, str], sha: str) -> bool:
+    """Ordinary pushes validate source; only version increases request a release."""
+    if env.get("GITHUB_EVENT_NAME") == "workflow_dispatch":
+        return True
+    if env.get("GITHUB_EVENT_NAME") != "push":
+        raise ValueError("Unsupported release event")
+    event_path = env.get("GITHUB_EVENT_PATH")
+    if not event_path:
+        raise ValueError("Push event payload is required to determine release intent")
+    event = json.loads(Path(event_path).read_text())
+    if not isinstance(event, dict) or event.get("after") != sha or event.get("ref") != "refs/heads/main":
+        raise ValueError("Push event must match the checked main commit")
+    before = event.get("before")
+    if not isinstance(before, str) or not re.fullmatch(r"[0-9a-f]{40}", before) or before == "0" * 40:
+        raise ValueError("A valid previous push commit is required; use a reviewed manual run for initial publication")
+    # Fail closed on missing history or a rewritten main branch. No fetch or write
+    # is performed here; checkout must provide the complete push range.
+    command(["git", "merge-base", "--is-ancestor", before, sha])
+    previous = source_version(command(["git", "show", f"{before}:app/version.py"]))
+    current = source_version(command(["git", "show", f"{sha}:app/version.py"]))
+    if current < previous:
+        raise ValueError("Release version must not decrease")
+    if current == previous:
+        print("No release requested: APP_VERSION is unchanged across this push; existing tags and assets are untouched")
+        return False
+    return True
+
+
+def plan() -> None:
+    """Emit a read-only job decision before a write-capable job is scheduled."""
+    sha = validate_context(os.environ, command(["git", "rev-parse", "HEAD"]))
+    publish = publication_requested(os.environ, sha)
+    output = os.environ.get("GITHUB_OUTPUT")
+    if not output:
+        raise ValueError("GITHUB_OUTPUT is required for the release plan")
+    with Path(output).open("a") as stream:
+        stream.write(f"publish={'true' if publish else 'false'}\n")
+    print(json.dumps({"commit": sha, "publish": publish}))
+
+
 def main() -> None:
     sha = validate_context(os.environ, command(["git", "rev-parse", "HEAD"]))
+    if not publication_requested(os.environ, sha):
+        return
     if api("git/ref/heads/main")["object"]["sha"] != sha:
         raise ValueError("Main moved after validation; refusing to publish stale source")
     data = runpy.run_path(str(ROOT / "scripts/release_metadata.py"))["release_data"]()
@@ -120,4 +181,10 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--plan", action="store_true", help="Determine release intent without contacting GitHub or publishing")
+    arguments = parser.parse_args()
+    if arguments.plan:
+        plan()
+    else:
+        main()

@@ -1,5 +1,27 @@
 # Changelog
 
+## 00.13.02 - 2026-09-26
+
+- Additive/Community: Add an original Code of Conduct with reporting, fair review, enforcement, and reconsideration procedures; add repository-specific Contributing Guidelines with isolated setup, validation, release, security, and rollback instructions.
+- Additive/Templates: Add public bug, feature, and documentation issue forms, a chooser that directs security/conduct concerns away from public reports, and a pull request template covering the review/release checklist. No dependency on pre-created labels or automatic assignees.
+- Fix/CI: Include the version-aware release publication correction from the unpublished 00.13.01 candidate. Existing published tags remain unchanged.
+- Maintenance: Add community-file structure, privacy, link and example regression tests; expose the canonical policies from README and the website; synchronize version 00.13.02 (npm 0.13.2), badges, metadata, and release notes.
+
+Compatibility: No new application, API, authentication, configuration, dependency, or database behavior changes. The GitHub issue chooser now disables blank issues in favor of the three structured forms. Templates take effect after merging into the default branch. The 00.13.00 migration precautions remain applicable to older installations.
+
+Refs: PR #32; user request for Code of Conduct, Contributing Guidelines, Issue Templates, and Pull Request Template. Base candidate commit 1c2184c92449a13e5022001c4e11151f376269d9. Previous published release v00.13.00; 00.13.01 was not published. Validation results are tied to the final PR commit and its CI artifacts.
+
+## 00.13.01 - 2026-09-26 (unpublished candidate, superseded by 00.13.02)
+
+- Fix/CI: Separate read-only release-intent detection from publication. Ordinary pushes with an unchanged application version run CI without attempting to recreate an existing release.
+- Fix/Release: Compare versions across the full push before/after range, not only the final commit. Preserve explicit manual retries, exact-commit checks, immutable existing tags, and incomplete-release safeguards.
+- Fix/Validation: Parse previous version source as a literal, reject missing/rewritten history and version decreases, and test documentation-only pushes with real local Git history.
+- Maintenance: Synchronize version 00.13.01 (npm 0.13.1), container metadata, documentation and generated badges. Dependencies are unchanged; remove the deleted audit branch from the CI push filter.
+
+Compatibility: Backward-compatible patch. No new application, API, database, authentication, environment-variable or dependency changes. Prior 00.13.00 upgrade precautions remain applicable.
+
+Refs: PR #30 release regression; failed CI run 36261828606, job 108459388374; affected main 81cbec352bfde90ed7861460736ffdb6b53e7c5e; preserved v00.13.00 at 676295c7dc0338b5841e5f7ee3e40c7d8ddf3861. The patch PR and exact-commit CI artifacts record validation results.
+
 ## 00.13.00 - 2026-09-26
 
 - Additive: Introduce private, owner-only GPT Actions with scoped/revocable integration tokens and a generated OpenAPI contract.
