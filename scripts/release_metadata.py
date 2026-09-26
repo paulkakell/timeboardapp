@@ -72,7 +72,7 @@ def decorate_html(text: str) -> str:
     if START in text:
         if text.count(START) != 1 or text.count(END) != 1:
             raise ValueError("HTML must contain exactly one complete release badge block")
-        return re.sub(re.escape(START) + r".*?" + re.escape(END), lambda _: block, text, flags=re.S)
+        return re.sub(re.escape(START) + r".*?" + re.escape(END), lambda _: block, text, flags=re.DOTALL)
     updated, count = re.subn(r"<main\b[^>]*>", lambda m: m[0] + "\n" + block, text, count=1)
     if count != 1:
         raise ValueError("HTML page requires a main element")
@@ -94,7 +94,7 @@ def outputs() -> dict[Path, str]:
     readme = (ROOT / "README.md").read_text()
     if readme.count(START) != 1 or readme.count(END) != 1:
         raise ValueError("README requires one release badge block")
-    files[ROOT / "README.md"] = re.sub(re.escape(START) + r".*?" + re.escape(END), lambda _: badges(markdown=True), readme, flags=re.S)
+    files[ROOT / "README.md"] = re.sub(re.escape(START) + r".*?" + re.escape(END), lambda _: badges(markdown=True), readme, flags=re.DOTALL)
     files.update({path: decorate_html(path.read_text()) for path in (ROOT / "docs").rglob("*.html")})
     return files
 

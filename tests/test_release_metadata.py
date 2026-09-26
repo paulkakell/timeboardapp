@@ -65,7 +65,7 @@ def test_versioned_notes_and_changelog_exist():
     for prefix in ("RELEASE_NOTES", "VALIDATION_REPORT"):
         assert (ROOT / f'{prefix}_{data["version"]}.md').is_file()
     changelog = (ROOT / "CHANGELOG.md").read_text()
-    assert re.search(r"^## (\d{2}\.\d{2}\.\d{2})", changelog, re.M)[1] == data["version"]
+    assert re.search(r"^## (\d{2}\.\d{2}\.\d{2})", changelog, re.MULTILINE)[1] == data["version"]
     assert "BREAKING" in changelog
     assert "#30" in changelog
     notes = (ROOT / f'RELEASE_NOTES_{data["version"]}.md').read_text()
