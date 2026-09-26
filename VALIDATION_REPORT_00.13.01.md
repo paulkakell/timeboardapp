@@ -1,5 +1,7 @@
 # Validation scope for 00.13.01
 
+Status: unpublished candidate, superseded by 00.13.02 in PR #32. Retained as preparation history, not a published release.
+
 This patch corrects release-intent detection. The original failing publication job is 108459388374 in run 36261828606. Its application regression, browser/security and container jobs succeeded; publication alone failed on an existing tag targeting the prior release commit. Do not describe that original workflow run as fully successful.
 
 ## Required evidence

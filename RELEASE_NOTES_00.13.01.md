@@ -1,5 +1,7 @@
 # TimeboardApp 00.13.01
 
+Status: unpublished candidate, superseded by 00.13.02 in PR #32. Retained as preparation history, not a published release.
+
 Date: September 26, 2026. Intended tag: `v00.13.01`. Previous release: `v00.13.00`. Classification: bug fix. No new application compatibility breaks.
 
 ## Correction

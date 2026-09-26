@@ -1,0 +1,48 @@
+name: Documentation correction
+description: Report an inaccurate page, missing instruction, or broken documentation link.
+title: "[Docs]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this form for documentation, not private support or security disclosure. Follow [SECURITY.md](https://github.com/paulkakell/timeboardapp/blob/main/SECURITY.md) for vulnerabilities.
+        Do not include passwords, tokens, private tasks, databases, or unredacted settings/screenshots.
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues and pull requests for this correction.
+          required: true
+        - label: This is not a security vulnerability report, and I removed private data and credentials.
+          required: true
+        - label: I agree to follow the [Code of Conduct](https://github.com/paulkakell/timeboardapp/blob/main/CODE_OF_CONDUCT.md).
+          required: true
+  - type: input
+    id: location
+    attributes:
+      label: Page URL or repository path
+      placeholder: "docs/docs/deployment.html or a public documentation URL"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Application version, source commit, or page review date
+      description: Identify the version the documentation should describe.
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Inaccuracy or missing information
+      description: Quote the smallest relevant passage or identify the failing link/command. Redact private values.
+    validations:
+      required: true
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction or expected information
+      description: Include a reproducible example or source when available. Say when the correct behavior is not yet known.
+    validations:
+      required: true

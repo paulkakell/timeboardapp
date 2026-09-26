@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability reporting
+    url: https://github.com/paulkakell/timeboardapp/blob/main/SECURITY.md
+    about: Establish a private reporting channel; do not disclose vulnerabilities in public issues.
+  - name: Documentation and contribution help
+    url: https://github.com/paulkakell/timeboardapp/blob/main/CONTRIBUTING.md#get-help-and-choose-the-right-report
+    about: Read setup instructions, contribution requirements, and guidance on choosing a report.
+  - name: Conduct concerns
+    url: https://github.com/paulkakell/timeboardapp/blob/main/CODE_OF_CONDUCT.md#reporting
+    about: Use the conduct reporting routes; do not post personal incident details publicly.

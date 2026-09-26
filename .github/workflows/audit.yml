@@ -57,7 +57,7 @@ jobs:
           curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/astral-sh/ruff/releases/download/0.16.9/ruff-x86_64-unknown-linux-gnu.tar.gz -o /tmp/timeboard-quality/ruff.tar.gz
           echo '1bfbb819b5d4f9af501748862276b60e412d336034d99387691a4d4bce7a6f13  /tmp/timeboard-quality/ruff.tar.gz' | sha256sum --check
           tar -xzf /tmp/timeboard-quality/ruff.tar.gz -C /tmp/timeboard-quality/ruff --strip-components=1
-          /tmp/timeboard-quality/ruff/ruff check scripts/release_metadata.py scripts/publish_release.py tests/test_release_metadata.py 2>&1 | tee audit-evidence/release-lint.txt
+          /tmp/timeboard-quality/ruff/ruff check scripts/release_metadata.py scripts/publish_release.py tests/test_release_metadata.py tests/test_community_files.py 2>&1 | tee audit-evidence/release-lint.txt
           curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/microsoft/pyright/releases/download/1.1.414/pyright.tgz -o /tmp/timeboard-quality/pyright.tgz
           echo 'bf5f473f6167c0d14175492c3263d783b4489a6956e1c06c18e15228e3a3fa42  /tmp/timeboard-quality/pyright.tgz' | sha256sum --check
           tar -xzf /tmp/timeboard-quality/pyright.tgz -C /tmp/timeboard-quality/pyright --strip-components=1

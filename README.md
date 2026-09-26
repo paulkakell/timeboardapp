@@ -2,10 +2,10 @@
 
 A self-hosted task board with recurrence, nested subtasks, calendar and mobile views, tags, manager assignment, task following, notifications, and administrator tools. FastAPI, Jinja, SQLAlchemy/SQLite, and APScheduler power the application.
 
-**Source version:** `00.13.01`. This patch fixes release publication after ordinary main-branch pushes; it introduces no new application compatibility changes. Upgrades from versions before 00.13.00 still require the documented authentication/deployment migration. Read [release notes](RELEASE_NOTES_00.13.01.md) and [versioning guidance](VERSIONING.md) before upgrading. A source release does not automatically upgrade existing application deployments.
+**Source version:** `00.13.02`. This patch adds community guidelines and contribution templates, and fixes release publication after ordinary main-branch pushes; it introduces no new application compatibility changes. Upgrades from versions before 00.13.00 still require the documented authentication/deployment migration. Read [release notes](RELEASE_NOTES_00.13.02.md) and [versioning guidance](VERSIONING.md) before upgrading. A source release does not automatically upgrade existing application deployments.
 
 <!-- release-badges:start -->
-[![Source version 00.13.01](docs/assets/badges/version.svg)](https://github.com/paulkakell/timeboardapp/releases/tag/v00.13.01)
+[![Source version 00.13.02](docs/assets/badges/version.svg)](https://github.com/paulkakell/timeboardapp/releases/tag/v00.13.02)
 [![CI on main](https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml/badge.svg?branch=main&event=push)](https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml?query=branch%3Amain)
 [![Tested Python 3.12 and 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](https://github.com/paulkakell/timeboardapp/blob/main/.github/workflows/audit.yml)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/paulkakell/timeboardapp/blob/main/LICENSE)
@@ -75,3 +75,9 @@ MIT licensed. Keep demo mode isolated: its public credentials and destructive re
 ### CI and release publication
 
 Every main-branch push still runs the complete CI checks. A read-only release-intent job compares `APP_VERSION` across the complete push range. Unchanged versions skip publication, so documentation or maintenance commits do not attempt to recreate an existing release. Version increases request publication only after all checks pass. An explicit main-branch manual workflow run may retry publication; conflicting tags and incomplete releases still require review. See [VERSIONING.md](VERSIONING.md) for examples and recovery instructions.
+
+## Community and contributing
+
+Read the [Code of Conduct](CODE_OF_CONDUCT.md) and [Contributing Guidelines](CONTRIBUTING.md) before participating. The [issue chooser](https://github.com/paulkakell/timeboardapp/issues/new/choose) provides bug, feature, and documentation forms. Pull requests use the [review template](.github/pull_request_template.md). The [community guide](docs/docs/community.html) links these policies without duplicating them.
+
+Report vulnerabilities through [SECURITY.md](SECURITY.md), and use the conduct policy's reporting routes for behavior concerns. Do not put credentials, private tasks, or incident details in public reports. GitHub begins offering the new templates once they are merged into the default branch.
