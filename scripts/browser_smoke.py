@@ -8,6 +8,7 @@ import tempfile
 import time
 import urllib.request
 from playwright.sync_api import sync_playwright
+from browser_nested_subtasks import exercise_nested_subtasks
 
 ROOT = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix='timeboard-browser-') as raw:
@@ -51,6 +52,7 @@ with tempfile.TemporaryDirectory(prefix='timeboard-browser-') as raw:
                 page.locator('input[name=task_type]').fill('Regression')
                 page.get_by_role('button',name='Save',exact=True).click()
                 assert 'Browser smoke <task>' in page.locator('body').inner_text()
+                exercise_nested_subtasks(page)
                 page.goto('/calendar')
                 page.locator('.fc-view-harness').wait_for(state='visible')
                 for name in ('week','day','month'):

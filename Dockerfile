@@ -1,6 +1,6 @@
 FROM python:3.13-slim@sha256:7c61056e61ac89e852de05f3dc6fa51a6dd2181797bceed46aa725dd7cb2cd3b
 
-LABEL org.opencontainers.image.version="00.13.02" \
+LABEL org.opencontainers.image.version="00.13.03" \
       org.opencontainers.image.source="https://github.com/paulkakell/timeboardapp" \
       org.opencontainers.image.licenses="MIT"
 ARG VCS_REF

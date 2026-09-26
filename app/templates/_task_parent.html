@@ -1,0 +1,10 @@
+{% if t.parent_task_id %}
+  <div class="small text-muted task-parent">
+    Subtask of
+    {% if t.parent and t.parent.user_id == t.user_id %}
+      <a href="/tasks/{{ t.parent.id }}/edit?next={{ return_to_q }}">{{ t.parent.name }}</a>
+    {% else %}
+      unavailable parent
+    {% endif %}
+  </div>
+{% endif %}

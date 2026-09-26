@@ -107,6 +107,7 @@ from ..notifications import (
 from ..validation import default_validation_log_dir, run_admin_validation
 from ..utils.humanize import humanize_timedelta, time_left_class, seconds_to_duration_str
 from ..utils.time_utils import iso_for_datetime_local_input, now_utc, to_local
+from ..utils.task_tree import build_descendant_rows
 from ..version import APP_VERSION
 
 from markupsafe import Markup, escape
@@ -624,6 +625,25 @@ def _task_form_context(task: Task | None = None) -> dict:
         else seconds_to_duration_str(int(task.recurrence_interval_seconds)),
         "recurrence_times": task.recurrence_times or "",
         "tags": ", ".join([t.name for t in (task.tags or [])]),
+    }
+
+
+def _task_hierarchy_context(db: Session, task: Task) -> dict:
+    """Load hierarchy only after authorizing access to the task.
+
+    Keep the same-owner invariant when displaying older/imported data. Filtering
+    before traversal also excludes branches behind a foreign-owner node.
+    """
+    parent_task = get_task(db, task_id=int(task.parent_task_id)) if task.parent_task_id else None
+    if parent_task is not None and int(parent_task.user_id) != int(task.user_id):
+        parent_task = None
+    descendants = [
+        child for child in list_descendant_tasks(db, root_task_id=int(task.id))
+        if int(child.user_id) == int(task.user_id)
+    ]
+    return {
+        "parent_task": parent_task,
+        "descendant_rows": build_descendant_rows(descendants, root_task_id=int(task.id)),
     }
 
 
@@ -1691,35 +1711,7 @@ def task_edit_get(request: Request, task_id: int, next: str | None = None, db: S
 
     can_edit = bool(user.is_admin or int(task.user_id) == int(user.id))
 
-    # Parent task (if any)
-    parent_task = None
-    try:
-        if getattr(task, "parent_task_id", None):
-            parent_task = get_task(db, task_id=int(task.parent_task_id))
-    except Exception:
-        parent_task = None
-
-    # Descendant tasks
-    descendant_rows = []
-    try:
-        descendants = list_descendant_tasks(db, root_task_id=int(task.id))
-        parent_map: dict[int, int | None] = {int(task.id): None}
-        for t in descendants:
-            parent_map[int(t.id)] = (int(t.parent_task_id) if getattr(t, "parent_task_id", None) else None)
-
-        for t in descendants:
-            depth = 0
-            pid = parent_map.get(int(t.id))
-            seen = set()
-            while pid is not None and pid != int(task.id):
-                if pid in seen:
-                    break
-                seen.add(pid)
-                depth += 1
-                pid = parent_map.get(pid)
-            descendant_rows.append({"task": t, "depth": depth})
-    except Exception:
-        descendant_rows = []
+    hierarchy = _task_hierarchy_context(db, task)
 
     # Follow state
     can_follow = False
@@ -1746,8 +1738,7 @@ def task_edit_get(request: Request, task_id: int, next: str | None = None, db: S
             can_edit=bool(can_edit),
             can_follow=bool(can_follow),
             is_following=bool(following),
-            parent_task=parent_task,
-            descendant_rows=descendant_rows,
+            **hierarchy,
             **ctx,
         ),
     )
@@ -1776,7 +1767,11 @@ def task_edit_post(
     task = get_task(db, task_id=task_id)
     if not task:
         return _redirect("/dashboard")
+    # Authorize before parsing input or rendering an error containing task data.
+    if not user.is_admin and int(task.user_id) != int(user.id):
+        return _redirect("/dashboard")
 
+    hierarchy = _task_hierarchy_context(db, task)
     due_dt: datetime | None = None
     if due_date and str(due_date).strip():
         try:
@@ -1802,6 +1797,8 @@ def task_edit_post(
                     user,
                     db=db,
                     mode="edit",
+                    can_edit=True,
+                    **hierarchy,
                     error="Invalid due date format",
                     next_url=_safe_next_url(next, default="/dashboard"),
                     **ctx,
@@ -1845,6 +1842,8 @@ def task_edit_post(
                 user,
                 db=db,
                 mode="edit",
+                can_edit=True,
+                **hierarchy,
                 error=str(e),
                 next_url=_safe_next_url(next, default="/dashboard"),
                 **ctx,
