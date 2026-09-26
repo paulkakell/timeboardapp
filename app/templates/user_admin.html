@@ -16,6 +16,7 @@
       <div class="card-header">Create user</div>
       <div class="card-body">
         <form method="post" action="/admin/users/create" class="row g-3">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
           <div class="col-12">
             <label class="form-label">Username</label>
             <input class="form-control" type="text" name="username" required>
@@ -77,6 +78,7 @@
                     <a class="btn btn-sm btn-outline-secondary" href="/admin/users/{{ u.id }}/edit">Edit</a>
                     {% if u.id != current_user.id %}
                       <form method="post" action="/admin/users/{{ u.id }}/toggle-admin" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
                         {% if u.is_admin %}
                           <button class="btn btn-sm btn-outline-secondary" type="submit">Make User</button>
                         {% else %}
@@ -84,6 +86,7 @@
                         {% endif %}
                       </form>
 	                      <form method="post" action="/admin/users/{{ u.id }}/delete" class="d-inline" onsubmit="return confirm('Delete user {{ u.username }}?');">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
 	                        <select class="form-select form-select-sm d-inline w-auto" name="reassign_completed_to_user_id" title="Completed tasks">
 	                          <option value="">Delete completed tasks</option>
 	                          {% for mu in manager_options %}

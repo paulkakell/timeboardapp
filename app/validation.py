@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .clock import utc_now
+
 import importlib.metadata
 import re
 import secrets
@@ -122,7 +124,7 @@ class ValidationReport:
         return counts
 
     def to_text(self) -> str:
-        completed = self.completed_at_utc or datetime.utcnow().replace(tzinfo=None)
+        completed = self.completed_at_utc or utc_now().replace(tzinfo=None)
         counts = self.counts()
         lines: list[str] = []
         lines.append("TimeboardApp validation report")
@@ -195,13 +197,8 @@ def redact_validation_text(text_value: str) -> str:
 def default_validation_log_dir() -> Path:
     """Return the directory used for validation logs in the running environment."""
 
-    try:
-        db_path = str(get_settings().database.path or "").strip()
-        if db_path and not db_path.startswith("sqlite:"):
-            return Path(db_path).expanduser().resolve().parent / VALIDATION_LOG_BASENAME
-    except Exception:
-        pass
-    return Path("/data") / VALIDATION_LOG_BASENAME
+    from .paths import data_directory
+    return data_directory() / VALIDATION_LOG_BASENAME
 
 
 def _write_validation_log(report: ValidationReport, *, log_dir: Path | None = None) -> Path | None:
@@ -343,7 +340,7 @@ def _check_dependency_inventory() -> tuple[str, str]:
     if req_path.exists():
         for raw in req_path.read_text(encoding="utf-8").splitlines():
             line = raw.strip()
-            if not line or line.startswith("#"):
+            if not line or line.startswith(("#", "-")):
                 continue
             name = re.split(r"[<>=!~\[]", line, maxsplit=1)[0].strip()
             if name:
@@ -374,7 +371,7 @@ def _scan_source_for_risky_patterns() -> tuple[str, str]:
         ("yaml_load", re.compile(r"\byaml\.load\s*\("), "yaml.load usage"),
     ]
     suffixes = {".py", ".html", ".js", ".yml", ".yaml"}
-    skip_parts = {".git", "__pycache__", ".pytest_cache", "validation", "data"}
+    skip_parts = {".git", "__pycache__", ".pytest_cache", "validation", "data", "node_modules", "vendor"}
     findings: list[str] = []
 
     for path in root.rglob("*"):
@@ -511,16 +508,16 @@ class _ValidationFixture:
             self.db,
             user=admin,
             token=token,
-            expires_at_utc=datetime.utcnow().replace(tzinfo=None) + timedelta(minutes=30),
+            expires_at_utc=utc_now().replace(tzinfo=None) + timedelta(minutes=30),
         )
-        _assert(consume_password_reset_token(self.db, token=token, new_password=new_password, now_utc=datetime.utcnow()), "password reset token was not consumed")
+        _assert(consume_password_reset_token(self.db, token=token, new_password=new_password, now_utc=utc_now()), "password reset token was not consumed")
         _assert(authenticate_user(self.db, admin.username, new_password) is not None, "authentication with reset password failed")
         self.password = new_password
         return "Authentication, profile UI prefs persistence, and password reset flow passed."
 
     def check_task_crud_filtering_and_archiving(self) -> str:
         admin, _manager, _subordinate = self.require_ready()
-        now = datetime.utcnow().replace(tzinfo=timezone.utc)
+        now = utc_now().replace(tzinfo=timezone.utc)
         past = create_task(
             self.db,
             owner=admin,
@@ -551,7 +548,7 @@ class _ValidationFixture:
         )
         _assert(updated.name.endswith("updated"), "task update did not persist")
 
-        soft_delete_task(self.db, task=future, current_user=admin, when_utc=datetime.utcnow().replace(tzinfo=None))
+        soft_delete_task(self.db, task=future, current_user=admin, when_utc=utc_now().replace(tzinfo=None))
         _assert(future.status == TaskStatus.deleted, "soft delete did not mark task deleted")
         restore_task(self.db, task=future, current_user=admin)
         _assert(future.status == TaskStatus.active, "restore did not reactivate deleted task")
@@ -572,7 +569,7 @@ class _ValidationFixture:
         _assert(parse_times_csv("08:00, 15:30") == "08:00,15:30", "daily times parser failed")
         _assert(parse_fixed_calendar_rule("Every Tuesday"), "fixed calendar rule parser failed")
 
-        due = datetime.utcnow().replace(tzinfo=timezone.utc) - timedelta(minutes=5)
+        due = utc_now().replace(tzinfo=timezone.utc) - timedelta(minutes=5)
         recurrent = create_task(
             self.db,
             owner=admin,
@@ -587,7 +584,7 @@ class _ValidationFixture:
             self.db,
             task=recurrent,
             current_user=admin,
-            when_utc=datetime.utcnow().replace(tzinfo=None),
+            when_utc=utc_now().replace(tzinfo=None),
         )
         _assert(completed.status == TaskStatus.completed, "recurrent source task was not completed")
         _assert(spawned is not None and spawned.status == TaskStatus.active, "post-completion recurrence did not spawn a new active task")
@@ -595,7 +592,7 @@ class _ValidationFixture:
 
     def check_nested_subtasks_and_permissions(self) -> str:
         admin, _manager, subordinate = self.require_ready()
-        now = datetime.utcnow().replace(tzinfo=timezone.utc)
+        now = utc_now().replace(tzinfo=timezone.utc)
         parent = create_task(
             self.db,
             owner=admin,
@@ -612,7 +609,7 @@ class _ValidationFixture:
             parent_task_id=int(parent.id),
         )
         try:
-            complete_task(self.db, task=parent, current_user=admin, when_utc=datetime.utcnow().replace(tzinfo=None))
+            complete_task(self.db, task=parent, current_user=admin, when_utc=utc_now().replace(tzinfo=None))
             raise AssertionError("Completing a parent with an open child did not require confirmation")
         except OpenSubtasksError:
             pass
@@ -620,7 +617,7 @@ class _ValidationFixture:
             self.db,
             task=parent,
             current_user=admin,
-            when_utc=datetime.utcnow().replace(tzinfo=None),
+            when_utc=utc_now().replace(tzinfo=None),
             cascade_subtasks=True,
         )
         self.db.refresh(child)
@@ -642,7 +639,7 @@ class _ValidationFixture:
 
     def check_manager_assignment_following(self) -> str:
         _admin, manager, subordinate = self.require_ready()
-        now = datetime.utcnow().replace(tzinfo=timezone.utc)
+        now = utc_now().replace(tzinfo=timezone.utc)
         assigned = create_task(
             self.db,
             owner=subordinate,
@@ -782,9 +779,9 @@ def run_admin_validation(
     """
 
     report = ValidationReport(
-        run_id=datetime.utcnow().strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(4),
+        run_id=utc_now().strftime("%Y%m%dT%H%M%SZ") + "-" + secrets.token_hex(4),
         app_version=APP_VERSION,
-        started_at_utc=datetime.utcnow().replace(tzinfo=None),
+        started_at_utc=utc_now().replace(tzinfo=None),
         actor=actor,
         base_url=base_url,
     )
@@ -820,7 +817,7 @@ def run_admin_validation(
     _run_check(report, "External integrations", "Email delivery mode", _check_email_mode)
     _run_check(report, "External integrations", "Notification delivery channel registry", _check_notification_delivery_modes)
 
-    report.completed_at_utc = datetime.utcnow().replace(tzinfo=None)
+    report.completed_at_utc = utc_now().replace(tzinfo=None)
     if write_log:
         _write_validation_log(report, log_dir=log_dir)
     return report

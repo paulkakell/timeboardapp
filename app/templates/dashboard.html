@@ -101,7 +101,7 @@
             <td>
               <div class="fw-semibold">{% if t.parent_task_id %}&#8627;&nbsp;{% endif %}{{ t.name }}</div>
               {% if t.description %}<div class="small text-muted">{{ t.description | linkify }}</div>{% endif %}
-              {% if t.url %}<div class="small"><a href="{{ t.url }}" target="_blank" rel="noopener">{{ t.url }}</a></div>{% endif %}
+              {% if t.url %}<div class="small"><a href="{{ t.url|safe_task_url }}" target="_blank" rel="noopener">{{ t.url }}</a></div>{% endif %}
             </td>
             <td>{{ t.task_type }}</td>
             <td>
@@ -113,6 +113,7 @@
             </td>
             <td class="text-end">
               <form method="post" action="/tasks/{{ t.id }}/complete" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
                 <input type="hidden" name="next" value="{{ return_to }}">
                 <button class="btn btn-sm btn-success" type="submit">Complete</button>
               </form>
@@ -120,6 +121,7 @@
               <a class="btn btn-link btn-sm p-0" href="/tasks/{{ t.id }}/edit?next={{ return_to_q }}">Update</a>
               <span class="text-muted">|</span>
               <form method="post" action="/tasks/{{ t.id }}/delete" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
                 <input type="hidden" name="next" value="{{ return_to }}">
                 <button class="btn btn-link btn-sm p-0 text-danger" type="submit">Delete</button>
               </form>

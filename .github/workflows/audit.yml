@@ -1,0 +1,147 @@
+name: CI
+on:
+  push:
+    branches: [main, 'audit/security-api-refresh-2026-09-26']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.13']
+    env:
+      TIMEBOARDAPP_SETTINGS: /tmp/timeboardapp-audit/settings.yml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Isolated configuration and evidence
+        run: |
+          mkdir -p /tmp/timeboardapp-audit audit-evidence
+          printf 'database:\n  path: /tmp/timeboardapp-audit/test.db\n' > "$TIMEBOARDAPP_SETTINGS"
+          git rev-parse HEAD > audit-evidence/commit.txt
+          python --version > audit-evidence/python.txt
+          git archive -o audit-evidence/source.zip HEAD
+      - name: Install the reviewed dependency locks
+        run: |
+          python -m pip install --require-hashes -r requirements.txt -r requirements-dev.txt
+          python -m pip check
+          python -m pip freeze > audit-evidence/installed.txt
+      - name: Full regression suite and coverage
+        run: python -m pytest -q --cov=app --cov-report=xml:audit-evidence/coverage.xml --junitxml=audit-evidence/pytest.xml 2>&1 | tee audit-evidence/pytest.txt
+      - name: Source and website contract checks
+        run: |
+          python scripts/sync_docs.py --check
+          python scripts/release_metadata.py --check
+          python -m compileall -q app scripts
+          find app/static/js -name '*.js' -exec node --check {} \;
+      - name: Lint and type-check release tooling
+        if: matrix.python == '3.13'
+        run: |
+          mkdir -p /tmp/timeboard-quality/ruff /tmp/timeboard-quality/pyright
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/astral-sh/ruff/releases/download/0.16.9/ruff-x86_64-unknown-linux-gnu.tar.gz -o /tmp/timeboard-quality/ruff.tar.gz
+          echo '1bfbb819b5d4f9af501748862276b60e412d336034d99387691a4d4bce7a6f13  /tmp/timeboard-quality/ruff.tar.gz' | sha256sum --check
+          tar -xzf /tmp/timeboard-quality/ruff.tar.gz -C /tmp/timeboard-quality/ruff --strip-components=1
+          /tmp/timeboard-quality/ruff/ruff check scripts/release_metadata.py scripts/publish_release.py tests/test_release_metadata.py 2>&1 | tee audit-evidence/release-lint.txt
+          curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/microsoft/pyright/releases/download/1.1.414/pyright.tgz -o /tmp/timeboard-quality/pyright.tgz
+          echo 'bf5f473f6167c0d14175492c3263d783b4489a6956e1c06c18e15228e3a3fa42  /tmp/timeboard-quality/pyright.tgz' | sha256sum --check
+          tar -xzf /tmp/timeboard-quality/pyright.tgz -C /tmp/timeboard-quality/pyright --strip-components=1
+          node /tmp/timeboard-quality/pyright/index.js --pythonversion 3.13 --outputjson scripts/release_metadata.py scripts/publish_release.py > audit-evidence/release-types.json
+      - name: Dependency vulnerability gate
+        if: always()
+        run: python -m pip_audit --format=json --output=audit-evidence/pip-audit.json
+      - name: Static security gate (medium and high)
+        if: always()
+        run: python -m bandit -r app -ll -f json -o audit-evidence/bandit.json
+      - name: npm lock and vendor reproducibility
+        if: matrix.python == '3.13'
+        run: |
+          npm ci --ignore-scripts
+          npm audit --json > audit-evidence/npm-audit.json
+          python scripts/vendor_assets.py
+          git diff --exit-code -- app/static/vendor
+      - name: Chromium application smoke
+        if: matrix.python == '3.13'
+        run: |
+          python -m playwright install --with-deps chromium
+          python scripts/browser_smoke.py 2>&1 | tee audit-evidence/browser.txt
+      - name: Preserve exact-commit evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: audit-python-${{ matrix.python }}
+          path: audit-evidence/
+          retention-days: 30
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Compose and image build
+        run: |
+          mkdir -p audit-evidence
+          docker compose config -q
+          docker build --build-arg VCS_REF="$GITHUB_SHA" -t timeboardapp:audit . 2>&1 | tee audit-evidence/docker-build.txt
+          test "$(docker image inspect timeboardapp:audit --format '{{.Config.User}}')" = '1000:1000'
+          version="$(python -c 'import runpy; print(runpy.run_path("app/version.py")["APP_VERSION"])')"
+          test "$(docker image inspect timeboardapp:audit --format '{{index .Config.Labels "org.opencontainers.image.version"}}')" = "$version"
+          test "$(docker image inspect timeboardapp:audit --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$GITHUB_SHA"
+      - name: Non-root, read-only container smoke
+        run: |
+          docker run -d --name timeboard-audit --mount type=volume,src=timeboard-audit-data,dst=/data --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m --cap-drop ALL --security-opt no-new-privileges timeboardapp:audit
+          for attempt in $(seq 1 30); do
+            status="$(docker inspect timeboard-audit --format '{{.State.Health.Status}}')"
+            test "$status" != unhealthy
+            if test "$status" = healthy; then break; fi
+            sleep 2
+          done
+          test "$status" = healthy
+          docker exec timeboard-audit python -c "import os,pathlib; assert os.getuid()==1000; assert pathlib.Path('/data/initial-admin-password.txt').stat().st_mode & 0o777 == 0o600"
+          docker exec timeboard-audit python -c "import json,urllib.request; print(json.load(urllib.request.urlopen('http://127.0.0.1:8888/healthz')))" > audit-evidence/container-health.txt
+      - name: Container diagnostics
+        if: always()
+        run: |
+          docker logs timeboard-audit > audit-evidence/container-log.txt 2>&1 || true
+          docker inspect timeboard-audit > audit-evidence/container-inspect.json || true
+          docker rm -f timeboard-audit || true
+          docker volume rm timeboard-audit-data || true
+      - name: Preserve container evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: audit-container
+          path: audit-evidence/
+          retention-days: 30
+  release:
+    name: Publish checked source release
+    needs: [regression, container]
+    if: github.repository == 'paulkakell/timeboardapp' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Publish exact-commit tag, notes, source archives and checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/publish_release.py

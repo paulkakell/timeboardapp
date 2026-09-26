@@ -38,6 +38,7 @@
         <a href="/docs/getting-started.html">Get started</a>
         <a href="/docs/deployment.html">Deploy</a>
         <a href="/docs/api.html">API</a>
+        <a href="/docs/chatgpt.html">ChatGPT</a>
         <a href="/docs/demo.html">Demo</a>
         <a href="https://github.com/paulkakell/timeboardapp" target="_blank" rel="noopener">GitHub</a>
       </nav>
@@ -45,6 +46,13 @@
   </header>
 
   <main>
+<!-- release-badges:start -->
+<section class="release-status" aria-label="Source release information"><div class="container"><p>Source version <strong>00.13.00</strong> · 2026-09-26. Existing application deployments require an upgrade.</p><div class="release-badges"><a href="https://github.com/paulkakell/timeboardapp/releases/tag/v00.13.00"><img src="/assets/badges/version.svg" alt="Source version 00.13.00" height="20"></a>
+<a href="https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml?query=branch%3Amain"><img src="https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml/badge.svg?branch=main&amp;event=push" alt="CI on main" height="20"></a>
+<a href="https://github.com/paulkakell/timeboardapp/blob/main/.github/workflows/audit.yml"><img src="https://img.shields.io/badge/python-3.12%20%7C%203.13-blue" alt="Tested Python 3.12 and 3.13" height="20"></a>
+<a href="https://github.com/paulkakell/timeboardapp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" height="20"></a>
+<a href="https://timeboardapp.com/docs/chatgpt.html"><img src="https://img.shields.io/badge/ChatGPT-private%20GPT%20Actions-blue" alt="Private GPT Actions" height="20"></a></div></div></section>
+<!-- release-badges:end --><section class="section"><div class="container callout"><strong>Source version 00.13.00 · September 26, 2026</strong><p>Security hardening, dependency locks, and a private ChatGPT Actions interface are documented for the reviewed source. Check the <a href="/docs/reference.html">generated package and route reference</a> and <a href="/docs/deployment.html">migration requirements</a>; existing deployments are not automatically upgraded.</p></div></section>
     <section class="hero">
       <div class="container hero-grid">
         <div>
@@ -52,7 +60,7 @@
           <h1>TimeboardApp</h1>
           <p class="lead">
             A lightweight, dockerized task board built for schedules like “every 8 hours after completion”, “at 08:00/15:00/23:00”, and
-            fixed clock intervals. Mobile-friendly UI, SQLite storage, and a full OpenAPI-documented API.
+            fixed clock intervals. Mobile-friendly UI, SQLite storage, and an OpenAPI-documented REST API and owner-scoped private GPT Actions.
           </p>
           <div class="actions">
             <a class="btn primary" href="/docs/getting-started.html">Get started</a>
@@ -84,7 +92,7 @@
         <aside class="card">
           <h3>Quick start (Docker)</h3>
           <p class="small">Run locally with Docker Compose. Defaults to <strong>http://localhost:8888</strong>.</p>
-          <div class="code"><pre><code>docker compose up --build</code></pre></div>
+          <p><a href="/docs/getting-started.html">Follow the setup steps</a> to create a correctly owned private data directory before starting Compose.</p>
 
           <div class="callout">
             <strong>Demo mode</strong>
@@ -98,7 +106,7 @@
             <li>FastAPI backend + server-rendered HTML templates</li>
             <li>SQLite database on a Docker volume</li>
             <li>Background jobs for reminders, demo resets, and purging</li>
-            <li>Notification channels: browser (SSE), email, webhook, Gotify, ntfy, WNS</li>
+            <li>Notification channels: browser (connected-page SSE), SMTP/SendGrid email, Discord, webhook, generic API, Gotify, ntfy, and legacy UWP WNS</li>
           </ul>
         </aside>
       </div>

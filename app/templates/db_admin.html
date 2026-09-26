@@ -46,6 +46,7 @@
       <div class="card-body">
         <p class="small text-muted">Importing replaces the current database contents with the uploaded JSON file.</p>
         <form method="post" action="/admin/database/import" enctype="multipart/form-data">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
           <div class="mb-3">
             <label class="form-label">JSON file</label>
             <input class="form-control" type="file" name="file" accept="application/json" required>
@@ -69,6 +70,7 @@
         </p>
 
         <form method="post" action="/admin/database/auto-backups">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
           <div class="row g-2 align-items-end">
             <div class="col-12 col-md-4">
               <label class="form-label">Frequency</label>
@@ -106,6 +108,7 @@
         </p>
 
         <form method="post" action="/admin/database/purge-all">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
           <div class="row g-2 align-items-end">
             <div class="col-12 col-md-6">
               <label class="form-label">Type <code>PURGE</code> to confirm</label>

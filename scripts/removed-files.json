@@ -1,0 +1,12 @@
+{
+  "reason": "Unreferenced top-level icon aliases; canonical app/static/img PNGs and app/static/favicon.ico retained. Historical release notes retained.",
+  "paths": [
+    "app/static/favicon-128.png",
+    "app/static/favicon-16.png",
+    "app/static/favicon-256.png",
+    "app/static/favicon-32.png",
+    "app/static/favicon-48.png",
+    "app/static/favicon-64.png",
+    "app/favicon.ico"
+  ]
+}

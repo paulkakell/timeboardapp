@@ -80,7 +80,7 @@
               <div class="fw-semibold">{{ t.name }}</div>
               {% if t.description %}<div class="small text-muted">{{ t.description }}</div>{% endif %}
               <div class="small text-muted">Due {{ t.due_date_utc|dt_local }}</div>
-              {% if t.url %}<div class="small"><a href="{{ t.url }}" target="_blank" rel="noopener">{{ t.url }}</a></div>{% endif %}
+              {% if t.url %}<div class="small"><a href="{{ t.url|safe_task_url }}" target="_blank" rel="noopener">{{ t.url }}</a></div>{% endif %}
             </td>
             <td>{{ t.task_type }}</td>
             <td>
@@ -92,6 +92,7 @@
             </td>
             <td class="text-end">
               <form method="post" action="/tasks/{{ t.id }}/restore" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
                 <button class="btn btn-sm btn-primary" type="submit">Restore</button>
               </form>
             </td>

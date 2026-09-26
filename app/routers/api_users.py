@@ -48,6 +48,32 @@ def api_create_user(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/me", response_model=UserOut)
+def api_get_me(current_user=Depends(get_current_user_api)):
+    return current_user
+
+
+@router.patch("/me", response_model=UserOut)
+def api_update_me(
+    payload: UserMeUpdate,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_api),
+):
+    try:
+        updated = update_user_me(
+            db,
+            user=current_user,
+            theme=payload.theme,
+            purge_days=payload.purge_days,
+            email=payload.email,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return updated
+
+
 @router.patch("/{user_id}", response_model=UserOut)
 def api_update_user(
     user_id: int,
@@ -82,27 +108,3 @@ def api_delete_user(
     return {"status": "deleted"}
 
 
-@router.get("/me", response_model=UserOut)
-def api_get_me(current_user=Depends(get_current_user_api)):
-    return current_user
-
-
-@router.patch("/me", response_model=UserOut)
-def api_update_me(
-    payload: UserMeUpdate,
-    db: Session = Depends(get_db),
-    current_user=Depends(get_current_user_api),
-):
-    try:
-        updated = update_user_me(
-            db,
-            user=current_user,
-            theme=payload.theme,
-            purge_days=payload.purge_days,
-            email=payload.email,
-            current_password=payload.current_password,
-            new_password=payload.new_password,
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    return updated

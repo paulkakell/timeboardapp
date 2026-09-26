@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .clock import utc_now
+
 import hashlib
 import logging
 from datetime import datetime, timedelta, timezone
@@ -8,6 +10,7 @@ from typing import Iterable, Optional
 from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import Session, joinedload
 
+from .urls import validate_task_url
 from .auth import hash_password, verify_password
 from .config import get_settings
 from .models import NotificationEvent, PasswordResetToken, RecurrenceType, Tag, Task, TaskFollow, TaskStatus, Theme, User
@@ -57,7 +60,7 @@ _UNSET = object()
 
 
 def _now_utc_naive() -> datetime:
-    return datetime.utcnow().replace(tzinfo=None)
+    return utc_now().replace(tzinfo=None)
 
 
 def create_in_app_notification(
@@ -670,7 +673,7 @@ def create_task(
         name=name,
         task_type=task_type,
         description=description,
-        url=url,
+        url=validate_task_url(url),
         due_date_utc=due_utc,
         recurrence_type=rtype,
         recurrence_interval_seconds=interval_seconds,
@@ -1098,9 +1101,9 @@ def list_tasks(
         secondary = Task.task_type
 
     if desc:
-        q = q.order_by(primary.desc(), secondary.desc())
+        q = q.order_by(primary.desc(), secondary.desc(), Task.id.desc())
     else:
-        q = q.order_by(primary.asc(), secondary.asc())
+        q = q.order_by(primary.asc(), secondary.asc(), Task.id.asc())
 
     if offset is not None:
         try:
@@ -1135,7 +1138,7 @@ def get_task_summary_counts(
     ``all_upcoming_due``.
     """
 
-    now = (now_utc or datetime.utcnow()).replace(tzinfo=None)
+    now = (now_utc or utc_now()).replace(tzinfo=None)
     in_8h = now + timedelta(hours=8)
     in_24h = now + timedelta(hours=24)
 
@@ -1206,7 +1209,7 @@ def update_task(
     if description is not None:
         task.description = description
     if url is not None:
-        task.url = url
+        task.url = validate_task_url(url)
     if due_date is not None:
         task.due_date_utc = normalize_datetime_to_utc_naive(due_date)
 
@@ -1328,6 +1331,16 @@ def complete_task(
     if open_desc and not cascade_subtasks:
         raise OpenSubtasksError(open_desc)
 
+    # Claim completion in the database before spawning a recurrence. Concurrent
+    # requests must not create two copies of the next occurrence.
+    claimed = db.query(Task).filter(Task.id == task.id, Task.status == TaskStatus.active).update(
+        {Task.status: TaskStatus.completed, Task.completed_at_utc: when_utc}, synchronize_session=False
+    )
+    if not claimed:
+        db.rollback()
+        db.refresh(task)
+        return task, None
+
     if open_desc and cascade_subtasks:
         # Complete open descendants first, but do not spawn recurrence tasks for
         # them. Parent recurrence (if any) will rebuild the child tree.
@@ -1434,7 +1447,7 @@ def complete_task(
 
 def purge_archived_tasks(db: Session) -> int:
     """Permanently delete archived tasks older than each user's purge window."""
-    now = datetime.utcnow().replace(tzinfo=None)
+    now = utc_now().replace(tzinfo=None)
     users = db.query(User).all()
     total_deleted = 0
     for u in users:

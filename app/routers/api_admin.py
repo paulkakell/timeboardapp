@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from ..auth import require_admin_api
 from ..db import get_db
+from ..paths import log_directory
 from ..logging_setup import list_log_files
 from ..meta_settings import (
     get_email_settings,
@@ -189,11 +190,11 @@ def read_log_file(
     max_lines: int = Query(2000, ge=1, le=20000),
 ):
     safe_name = Path(filename).name
-    candidate = Path("/data/logs") / safe_name
+    candidate = log_directory() / safe_name
     try:
         if not candidate.exists() or not candidate.is_file():
             raise HTTPException(status_code=404, detail="Not found")
-        if not str(candidate.resolve()).startswith(str(Path("/data/logs").resolve())):
+        if not str(candidate.resolve()).startswith(str(log_directory().resolve())):
             raise HTTPException(status_code=400, detail="Invalid filename")
     except HTTPException:
         raise

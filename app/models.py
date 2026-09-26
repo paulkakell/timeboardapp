@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .clock import utc_now
+
 import enum
 from datetime import datetime
 
@@ -78,9 +80,9 @@ class User(Base):
     # Kept nullable and schema-upgradable via lightweight migrations.
     ui_prefs_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
 
     tasks: Mapped[list["Task"]] = relationship(
@@ -118,7 +120,7 @@ class PasswordResetToken(Base):
     expires_at_utc: Mapped[datetime] = mapped_column(DateTime, nullable=False, index=True)
     used_at_utc: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
     user: Mapped[User] = relationship("User")
 
@@ -130,7 +132,7 @@ class AppMeta(Base):
     value: Mapped[str] = mapped_column(String(255), nullable=False)
 
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
 
 
@@ -154,7 +156,7 @@ class UserNotificationTag(Base):
         primary_key=True,
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
 
 class UserNotificationChannel(Base):
@@ -173,9 +175,9 @@ class UserNotificationChannel(Base):
     enabled: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     config_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
 
 
@@ -210,9 +212,9 @@ class UserNotificationService(Base):
     # Dedicated notification routing tag.
     tag_id: Mapped[int] = mapped_column(Integer, ForeignKey("tags.id", ondelete="CASCADE"), nullable=False)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
 
     # Optional relationship for convenience.
@@ -274,7 +276,7 @@ class NotificationEvent(Base):
     # eligible for purge using the same retention policy as archived tasks.
     cleared_at_utc: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False, index=True)
 
 
 class Tag(Base):
@@ -340,9 +342,9 @@ class Task(Base):
     completed_at_utc: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_at_utc: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False
+        DateTime, default=utc_now, onupdate=utc_now, nullable=False
     )
 
     user: Mapped[User] = relationship(
@@ -409,5 +411,18 @@ class TaskFollow(Base):
         index=True,
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now, nullable=False)
 
+
+
+class IntegrationToken(Base):
+    """Revocable, hashed, narrowly scoped integration credentials (not exported)."""
+    __tablename__ = "integration_tokens"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(128))
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    scopes: Mapped[str] = mapped_column(String(128))
+    credential_fingerprint: Mapped[str] = mapped_column(String(64))
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)

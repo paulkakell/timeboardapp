@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .clock import utc_now, utc_from_timestamp
+
 import logging
 import os
 import re
@@ -7,9 +9,9 @@ import threading
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Iterable
+from .paths import log_directory
 
 
-LOG_DIR = Path("/data/logs")
 LOG_PREFIX = "timeboardapp"
 
 
@@ -25,9 +27,9 @@ class DailyDateFileHandler(logging.Handler):
     new file when the local date changes.
     """
 
-    def __init__(self, *, base_dir: Path = LOG_DIR, prefix: str = LOG_PREFIX, level: int = logging.INFO):
+    def __init__(self, *, base_dir: Path | None = None, prefix: str = LOG_PREFIX, level: int = logging.INFO):
         super().__init__(level=level)
-        self.base_dir = Path(base_dir)
+        self.base_dir = Path(base_dir) if base_dir is not None else log_directory()
         self.prefix = str(prefix)
         self._lock = threading.RLock()
         self._current_date = self._today()
@@ -146,16 +148,16 @@ def apply_log_level(level: str) -> None:
 _LOGFILE_RE = re.compile(rf"^{re.escape(LOG_PREFIX)}-(\d{{4}}-\d{{2}}-\d{{2}})\.log$")
 
 
-def list_log_files(*, log_dir: Path = LOG_DIR) -> list[Path]:
+def list_log_files(*, log_dir: Path | None = None) -> list[Path]:
     """Return log files in newest-first order."""
-    d = Path(log_dir)
+    d = Path(log_dir) if log_dir is not None else log_directory()
     if not d.exists() or not d.is_dir():
         return []
     files = [p for p in d.iterdir() if p.is_file() and _LOGFILE_RE.match(p.name)]
     return sorted(files, key=lambda p: p.stat().st_mtime, reverse=True)
 
 
-def purge_old_logs(*, retention_days: int, log_dir: Path = LOG_DIR, now: datetime | None = None) -> int:
+def purge_old_logs(*, retention_days: int, log_dir: Path | None = None, now: datetime | None = None) -> int:
     """Delete log files older than retention_days.
 
     Uses file mtime as the age source.
@@ -167,17 +169,17 @@ def purge_old_logs(*, retention_days: int, log_dir: Path = LOG_DIR, now: datetim
     if days <= 0:
         return 0
 
-    d = Path(log_dir)
+    d = Path(log_dir) if log_dir is not None else log_directory()
     if not d.exists() or not d.is_dir():
         return 0
 
-    n = now or datetime.utcnow()
+    n = now or utc_now()
     cutoff = n - timedelta(days=days)
 
     deleted = 0
     for p in list_log_files(log_dir=d):
         try:
-            mtime = datetime.utcfromtimestamp(p.stat().st_mtime)
+            mtime = utc_from_timestamp(p.stat().st_mtime)
             if mtime < cutoff:
                 p.unlink(missing_ok=True)
                 deleted += 1

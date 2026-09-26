@@ -25,6 +25,7 @@
 
   <div class="d-flex gap-2">
     <form method="post" action="{{ action_url }}">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
       <input type="hidden" name="next" value="{{ next_url }}">
       <input type="hidden" name="cascade" value="1">
       {% if action == 'delete' %}

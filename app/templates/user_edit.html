@@ -10,6 +10,7 @@
 {% endif %}
 
 <form method="post" class="card card-body">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
   <div class="row g-3">
     <div class="col-12 col-md-6">
       <label class="form-label">Username</label>

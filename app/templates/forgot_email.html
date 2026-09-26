@@ -16,6 +16,7 @@
       <p class="small text-muted mb-3">Enter your username or email address. If the account has an email address on file, a reset link will be sent.</p>
 
       <form method="post" action="/forgot-email">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
         <div class="mb-3">
           <label class="form-label">Username or Email</label>
           <input class="form-control" type="text" name="identifier" required autofocus>

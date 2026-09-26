@@ -21,7 +21,7 @@ def login_for_access_token(
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect username or password")
 
-    token = create_access_token(subject=user.username, is_admin=user.is_admin)
+    token = create_access_token(subject=user.username, is_admin=user.is_admin, user=user)
     return Token(access_token=token)
 
 

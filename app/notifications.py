@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .clock import utc_now
+
 import html
 import json
 import logging
@@ -12,7 +14,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from urllib import parse, request
-from urllib.error import HTTPError, URLError
 
 from sqlalchemy.exc import IntegrityError, OperationalError
 from sqlalchemy.orm import Session, joinedload, sessionmaker
@@ -119,7 +120,7 @@ def _truncate(s: str, n: int) -> str:
 
 
 def _now_utc_naive() -> datetime:
-    return datetime.utcnow().replace(tzinfo=None)
+    return utc_now().replace(tzinfo=None)
 
 
 def _safe_url_for_log(url: str) -> str:
@@ -276,7 +277,7 @@ def _build_task_notification(*, task: Task, event_type: str) -> tuple[str, str, 
             "url": getattr(task, "url", None),
         },
         "tags": tags,
-        "occurred_at_utc": datetime.utcnow().replace(tzinfo=None).isoformat(),
+        "occurred_at_utc": utc_now().replace(tzinfo=None).isoformat(),
     }
 
     return title, message_text, message_html, payload
@@ -500,48 +501,8 @@ def _http_request(
     data: bytes | None = None,
     timeout: int = 10,
 ) -> tuple[int, str]:
-    # Only allow network calls over HTTP(S). This prevents accidental use of
-    # file:/ or other custom schemes when notification URLs are user-provided.
-    parsed = parse.urlparse(str(url))
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        raise ValueError("Invalid notification URL")
-
-    hdrs = {"User-Agent": "TimeboardApp"}
-    if headers:
-        for k, v in headers.items():
-            if k and v is not None:
-                hdrs[str(k)] = str(v)
-    req = request.Request(url=str(url), data=data, headers=hdrs, method=str(method).upper())
-
-    safe_url = _safe_url_for_log(str(url))
-    try:
-        with request.urlopen(req, timeout=timeout) as resp:  # nosec B310
-            body = resp.read() or b""
-            status = int(getattr(resp, "status", 200))
-            text = body.decode("utf-8", errors="replace")
-    except HTTPError as e:
-        try:
-            status = int(getattr(e, "code", 0) or 0)
-        except Exception:
-            status = 0
-        try:
-            body = e.read() or b""
-        except Exception:
-            body = b""
-        text = body.decode("utf-8", errors="replace")
-        snippet = _truncate(text.strip(), 300)
-        raise RuntimeError(f"HTTP {status} from {safe_url}: {snippet}") from None
-    except URLError as e:
-        reason = getattr(e, "reason", None)
-        raise RuntimeError(f"Request to {safe_url} failed: {reason or e}") from None
-    except Exception as e:
-        raise RuntimeError(f"Request to {safe_url} failed: {e}") from None
-
-    if status < 200 or status >= 300:
-        snippet = _truncate(text.strip(), 300)
-        raise RuntimeError(f"HTTP {status} from {safe_url}: {snippet}")
-
-    return status, text
+    from .outbound import send_request
+    return send_request(url=url, method=method, headers=headers, data=data, timeout=timeout)
 
 
 def _send_gotify(*, config: dict, title: str, message: str) -> None:
@@ -831,6 +792,10 @@ def _send_wns_toast(*, channel_uri: str, access_token: str, title: str, message:
         "Authorization": f"Bearer {access_token}",
         "X-WNS-Type": "wns/toast",
     }
+    destination = parse.urlsplit(uri)
+    host = (destination.hostname or "").lower().rstrip(".")
+    if destination.scheme != "https" or not (host == "notify.windows.com" or host.endswith(".notify.windows.com")):
+        raise ValueError("WNS channel URI must use HTTPS on notify.windows.com")
     _http_request(url=uri, headers=headers, data=toast_xml.encode("utf-8"), timeout=10)
 
 

@@ -12,6 +12,7 @@
 <div class="card card-body mb-3">
   <h2 class="h6">Settings</h2>
   <form method="post" action="/admin/logs">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
     <div class="row">
       <div class="col-md-6 mb-2">
         <label class="form-label">Log level</label>

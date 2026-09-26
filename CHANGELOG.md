@@ -1,5 +1,18 @@
 # Changelog
 
+## 00.13.00 - 2026-09-26
+
+- Additive: Introduce private, owner-only GPT Actions with scoped/revocable integration tokens and a generated OpenAPI contract.
+- Fix/Security: Replace legacy authentication libraries, revoke credentials on password changes, remove login-triggered admin recovery/password logging, add CSRF/origin protection, restrict outbound requests, redact secrets, and protect private file writes.
+- Fix: Repair configured logging paths, profile routing, parent/subtask API conflicts, recurrence completion claims, calendar assets, and Compose/non-root behavior.
+- Additive/Maintenance: Lock Python and npm dependencies, vendor browser assets with licenses, refresh source-backed website documentation, remove seven obsolete icon aliases, and replace the Docker-only workflow with full validation.
+- Additive/Release: Advance feature version from 00.12.03 to 00.13.00; synchronize application, npm, container, website and badge identities; add drift tests and gated exact-commit tag/release publication. npm uses the unpadded equivalent 0.13.0.
+- Tests: Repeat the full Python 3.12/3.13, API/security/migration/concurrency, website, Chromium, and container suites; add release identity and publisher safety regressions.
+
+Compatibility: BREAKING changes to existing session/JWT validity, legacy password rollback, CSRF-protected writes/POST logout, task pagination, outbound destination policy, and container/service defaults. New integration-token storage is additive. Back up and test restoration of database and settings with the matching old image before upgrading. Read RELEASE_NOTES_00.13.00.md and VERSIONING.md.
+
+Refs: PR #30; original main 1a9d32a4e6770870b4d0a1094cb2c9177d040706; reviewed implementation 0b20c8f511888e25236920884bc75547af973d07. The v00.13.00 tag and release manifest identify the final merged commit.
+
 ## 00.12.03
 
 - Fix/Security: Auto-repair legacy placeholder or short session/JWT secrets in existing `settings.yml` files and ignore weak secret environment overrides so Admin -> Validation no longer fails runtime secret strength on upgraded deployments.

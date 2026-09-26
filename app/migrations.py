@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from .clock import utc_now
+
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Optional, Tuple
@@ -60,7 +62,7 @@ def _set_meta(conn, key: str, value: str) -> None:
             "INSERT INTO app_meta(key, value, updated_at) VALUES (:k, :v, :u) "
             "ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at"
         ),
-        {"k": key, "v": value, "u": datetime.utcnow().replace(tzinfo=None)},
+        {"k": key, "v": value, "u": utc_now().replace(tzinfo=None)},
     )
 
 

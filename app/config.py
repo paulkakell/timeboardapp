@@ -5,6 +5,8 @@ import secrets
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict
+from urllib.parse import urlsplit
+from .private_files import write_private_text
 
 import yaml
 from pydantic import BaseModel, Field
@@ -86,11 +88,9 @@ def _repair_runtime_secrets(raw: Dict[str, Any], path: str) -> Dict[str, Any]:
         try:
             p = Path(path)
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(yaml.safe_dump(raw, sort_keys=False), encoding="utf-8")
+            write_private_text(p, yaml.safe_dump(raw, sort_keys=False))
         except Exception:
-            # Keep the secure in-memory settings even if the file cannot be
-            # rewritten. A writable /data volume will persist the rotation.
-            pass
+            raise RuntimeError("Cannot persist signing secrets; configure a writable settings file") from None
 
     return raw
 
@@ -106,6 +106,9 @@ class AppSettings(BaseModel):
 class SecuritySettings(BaseModel):
     session_secret: str = "CHANGE_ME_SESSION_SECRET"
     jwt_secret: str = "CHANGE_ME_JWT_SECRET"
+    secure_cookies: bool | None = None
+    # Exact hostname exceptions for explicitly trusted self-hosted notification services.
+    outbound_allowed_hosts: list[str] = Field(default_factory=list)
 
 
 class DatabaseSettings(BaseModel):
@@ -185,10 +188,10 @@ def _ensure_settings_file(path: str) -> None:
         text = sample.read_text(encoding="utf-8")
         text = text.replace("CHANGE_ME_SESSION_SECRET", session_secret)
         text = text.replace("CHANGE_ME_JWT_SECRET", jwt_secret)
-        p.write_text(text, encoding="utf-8")
+        write_private_text(p, text)
     else:
         # Minimal fallback
-        p.write_text(
+        write_private_text(p,
             "app:\n  name: 'TimeboardApp'\n  timezone: 'UTC'\n  host: '0.0.0.0'\n  port: 8888\n"
             f"security:\n  session_secret: '{session_secret}'\n  jwt_secret: '{jwt_secret}'\n"
             "database:\n  path: '/data/timeboardapp.db'\n"
@@ -222,14 +225,11 @@ def get_settings() -> Settings:
     if jwt_secret and not _is_weak_runtime_secret(jwt_secret):
         s.security.jwt_secret = jwt_secret
 
-    # Final defense-in-depth: ensure the in-memory runtime secrets are strong
-    # and distinct even if an override or malformed file bypassed repair.
-    if _is_weak_runtime_secret(s.security.session_secret):
-        s.security.session_secret = _new_runtime_secret()
-    if _is_weak_runtime_secret(s.security.jwt_secret) or s.security.jwt_secret == s.security.session_secret:
-        s.security.jwt_secret = _new_runtime_secret()
-        while s.security.jwt_secret == s.security.session_secret:
-            s.security.jwt_secret = _new_runtime_secret()
+    # Never invent a non-durable signing key after environment overrides.
+    if _is_weak_runtime_secret(s.security.session_secret) or _is_weak_runtime_secret(s.security.jwt_secret):
+        raise ValueError("Runtime signing secrets must be strong")
+    if s.security.session_secret == s.security.jwt_secret:
+        raise ValueError("Session and JWT signing secrets must be distinct")
 
     # Public base URL override (useful for external notifications).
     base_url_env = _env("BASE_URL")
@@ -244,4 +244,11 @@ def get_settings() -> Settings:
         except ValueError:
             pass
 
+    if s.app.base_url:
+        parsed = urlsplit(s.app.base_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment:
+            raise ValueError("app.base_url must be an absolute HTTP(S) URL without credentials, query or fragment")
+        _ = parsed.port  # Validate the port before accepting the configuration.
+    if s.security.session_secret == s.security.jwt_secret:
+        raise ValueError("Session and JWT signing secrets must be distinct")
     return s

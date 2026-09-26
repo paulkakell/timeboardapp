@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from ..clock import utc_now, utc_from_timestamp
+
 import asyncio
 import json
 import logging
@@ -16,8 +18,10 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..auth import authenticate_user
+from ..auth import authenticate_user, credential_fingerprint, session_user
 from ..config import get_settings
+from ..paths import log_directory, backup_directory
+from ..urls import safe_task_url
 from ..crud import (
     OpenSubtasksError,
     clear_in_app_unread,
@@ -179,6 +183,7 @@ def linkify_urls(text: str | None) -> Markup:
 
 
 templates.env.filters["linkify"] = linkify_urls
+templates.env.filters["safe_task_url"] = safe_task_url
 
 # Global template vars
 templates.env.globals["app_version"] = APP_VERSION
@@ -447,10 +452,7 @@ def _merge_stateful_dashboard_filters(
 
 
 def _get_current_user(request: Request, db: Session) -> Optional[User]:
-    user_id = request.session.get("user_id")
-    if not user_id:
-        return None
-    return db.query(User).filter(User.id == int(user_id)).first()
+    return session_user(request, db)
 
 
 def _redirect(url: str) -> RedirectResponse:
@@ -508,8 +510,7 @@ def _base_url_for_email(request: Request) -> str:
     base = (settings.app.base_url or "").strip().rstrip("/")
     if base:
         return base
-    # Fallback to request base URL
-    return str(request.base_url).rstrip("/")
+    raise ValueError("Configure TIMEBOARDAPP_BASE_URL before enabling password reset email")
 
 
 def _template_context(request: Request, user: Optional[User], db: Session | None = None, **extra) -> dict:
@@ -757,7 +758,9 @@ def login_post(
             status_code=401,
         )
 
+    request.session.clear()
     request.session["user_id"] = int(user.id)
+    request.session["credential_fingerprint"] = credential_fingerprint(user)
     return _redirect("/dashboard")
 
 
@@ -787,7 +790,7 @@ def forgot_email_post(
     identifier: str = Form(...),
     db: Session = Depends(get_db),
 ):
-    if not email_enabled(db):
+    if not email_enabled(db) or not settings.app.base_url:
         return templates.TemplateResponse(
             request,
             "forgot_email.html",
@@ -795,7 +798,7 @@ def forgot_email_post(
                 request,
                 None,
                 db=db,
-                error="Email sending is not configured on this server.",
+                error="Email sending and a public base URL must be configured on this server.",
                 success=None,
                 email_enabled=False,
             ),
@@ -810,7 +813,7 @@ def forgot_email_post(
     if u and u.email:
         token = secrets.token_urlsafe(32)
         cfg = get_email_settings(db)
-        expires = datetime.utcnow().replace(tzinfo=None) + timedelta(minutes=int(cfg.reset_token_minutes))
+        expires = utc_now().replace(tzinfo=None) + timedelta(minutes=int(cfg.reset_token_minutes))
         create_password_reset_token(db, user=u, token=token, expires_at_utc=expires)
 
         reset_url = f"{_base_url_for_email(request)}/reset-password?token={token}"
@@ -846,7 +849,7 @@ def reset_password_get(request: Request, token: str | None = None, db: Session =
         return _redirect("/login")
 
     tr = get_password_reset_token(db, token=token)
-    now = datetime.utcnow().replace(tzinfo=None)
+    now = utc_now().replace(tzinfo=None)
 
     valid = False
     if tr and tr.used_at_utc is None and tr.expires_at_utc >= now:
@@ -894,7 +897,7 @@ def reset_password_post(
             status_code=400,
         )
 
-    ok = consume_password_reset_token(db, token=token, new_password=new_password, now_utc=datetime.utcnow())
+    ok = consume_password_reset_token(db, token=token, new_password=new_password, now_utc=utc_now())
     if not ok:
         return templates.TemplateResponse(
             request,
@@ -914,7 +917,7 @@ def reset_password_post(
     return _redirect("/login?success=reset")
 
 
-@router.get("/logout")
+@router.post("/logout")
 def logout(request: Request):
     request.session.clear()
     return _redirect("/login")
@@ -2008,7 +2011,7 @@ def ui_past_due_tags(request: Request, db: Session = Depends(get_db)):
         {
             "enabled": True,
             "tags": tags,
-            "generated_at": datetime.utcnow().replace(tzinfo=None).isoformat(),
+            "generated_at": utc_now().replace(tzinfo=None).isoformat(),
         }
     )
 
@@ -2416,6 +2419,8 @@ async def notifications_stream(request: Request):
     last_id = 0
     db0 = SessionLocal()
     try:
+        if session_user(request, db0) is None:
+            return JSONResponse({"error": "not_authenticated"}, status_code=401)
         enabled = (
             db0.query(UserNotificationService.id)
             .filter(UserNotificationService.user_id == int(user_id))
@@ -2462,6 +2467,8 @@ async def notifications_stream(request: Request):
 
             dbx = SessionLocal()
             try:
+                if session_user(request, dbx) is None:
+                    break
                 rows = (
                     dbx.query(NotificationEvent)
                     .filter(NotificationEvent.user_id == int(user_id))
@@ -2784,7 +2791,7 @@ def admin_database_get(request: Request, db: Session = Depends(get_db)):
     ]
 
     # Basic backup directory stats (best-effort).
-    backup_dir = Path("/data/backups")
+    backup_dir = backup_directory()
     backup_count = 0
     latest_backup = None
     try:
@@ -2795,7 +2802,7 @@ def admin_database_get(request: Request, db: Session = Depends(get_db)):
                 newest = max(files, key=lambda p: p.stat().st_mtime)
                 latest_backup = {
                     "name": newest.name,
-                    "mtime_utc": datetime.utcfromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "mtime_utc": utc_from_timestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 }
     except Exception:
         backup_count = 0
@@ -2862,7 +2869,7 @@ def admin_database_auto_backups_post(
         ("disabled", "Disabled"),
     ]
 
-    backup_dir = Path("/data/backups")
+    backup_dir = backup_directory()
     backup_count = 0
     latest_backup = None
     try:
@@ -2873,7 +2880,7 @@ def admin_database_auto_backups_post(
                 newest = max(files, key=lambda p: p.stat().st_mtime)
                 latest_backup = {
                     "name": newest.name,
-                    "mtime_utc": datetime.utcfromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "mtime_utc": utc_from_timestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 }
     except Exception:
         backup_count = 0
@@ -2936,7 +2943,7 @@ def admin_database_import(request: Request, file: UploadFile, db: Session = Depe
         ("disabled", "Disabled"),
     ]
 
-    backup_dir = Path("/data/backups")
+    backup_dir = backup_directory()
     backup_count = 0
     latest_backup = None
     try:
@@ -2947,7 +2954,7 @@ def admin_database_import(request: Request, file: UploadFile, db: Session = Depe
                 newest = max(files, key=lambda p: p.stat().st_mtime)
                 latest_backup = {
                     "name": newest.name,
-                    "mtime_utc": datetime.utcfromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "mtime_utc": utc_from_timestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 }
     except Exception:
         backup_count = 0
@@ -3089,7 +3096,7 @@ def admin_database_purge_all(
         ("disabled", "Disabled"),
     ]
 
-    backup_dir = Path("/data/backups")
+    backup_dir = backup_directory()
     backup_count = 0
     latest_backup = None
     try:
@@ -3100,7 +3107,7 @@ def admin_database_purge_all(
                 newest = max(files, key=lambda p: p.stat().st_mtime)
                 latest_backup = {
                     "name": newest.name,
-                    "mtime_utc": datetime.utcfromtimestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC"),
+                    "mtime_utc": utc_from_timestamp(newest.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S UTC"),
                 }
     except Exception:
         backup_count = 0
@@ -3390,9 +3397,9 @@ def admin_logs_get(request: Request, file: str | None = None, db: Session = Depe
     content = None
     if file:
         safe_name = Path(file).name
-        candidate = Path("/data/logs") / safe_name
+        candidate = log_directory() / safe_name
         try:
-            if candidate.exists() and candidate.is_file() and str(candidate.resolve()).startswith(str(Path("/data/logs").resolve())):
+            if candidate.exists() and candidate.is_file() and str(candidate.resolve()).startswith(str(log_directory().resolve())):
                 selected = safe_name
                 content = _tail_file(candidate, max_lines=4000)
         except Exception:
@@ -3546,7 +3553,7 @@ def _validation_loopback_base_url() -> str:
 
 
 def _new_validation_csrf(request: Request) -> str:
-    token = secrets.token_urlsafe(24)
+    token = request.session.setdefault("csrf_token", secrets.token_urlsafe(32))
     request.session["admin_validation_csrf"] = token
     return token
 

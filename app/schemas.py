@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .models import RecurrenceType, Theme
 
@@ -30,8 +30,7 @@ class UserOut(UserBase):
     theme: str
     purge_days: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class UserMeUpdate(BaseModel):
@@ -51,8 +50,7 @@ class TagOut(BaseModel):
     id: int
     name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskBase(BaseModel):
@@ -120,10 +118,9 @@ class TaskOut(BaseModel):
     completed_at_utc: Optional[datetime]
     deleted_at_utc: Optional[datetime]
 
-    tags: List[TagOut] = []
+    tags: List[TagOut] = Field(default_factory=list)
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TaskCompleteResponse(BaseModel):
@@ -171,8 +168,7 @@ class NotificationServiceOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class NotificationEventOut(BaseModel):
@@ -192,8 +188,7 @@ class NotificationEventOut(BaseModel):
     delivered_at_utc: Optional[datetime] = None
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ---- Admin settings ----------------------------------------------------------------

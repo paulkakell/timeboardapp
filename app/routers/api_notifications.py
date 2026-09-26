@@ -21,7 +21,6 @@ from ..schemas import NotificationEventOut, NotificationServiceCreate, Notificat
 router = APIRouter()
 
 
-_SECRET_KEYS = {"token", "secret", "webhook_url", "client_secret", "smtp_password"}
 
 
 def _loads_cfg(s: str | None) -> dict:
@@ -34,14 +33,27 @@ def _loads_cfg(s: str | None) -> dict:
         return {}
 
 
+def _secret_key(key: str) -> bool:
+    key = str(key).lower()
+    return key in {"headers", "url", "channel_uri"} or any(word in key for word in ("token", "secret", "password", "authorization", "api_key", "webhook"))
+
+
 def _redact_cfg(cfg: dict) -> dict:
-    out: dict[str, Any] = {}
-    for k, v in (cfg or {}).items():
-        if str(k).lower() in _SECRET_KEYS and v:
-            out[k] = "***"
+    return {k: "***" if _secret_key(k) and v else (_redact_cfg(v) if isinstance(v, dict) else v) for k, v in (cfg or {}).items()}
+
+
+def _merge_cfg(existing: dict, incoming: dict) -> dict:
+    merged = dict(existing)
+    for k, v in incoming.items():
+        if v == "***" or (_secret_key(k) and v == ""):
+            continue
+        if v is None:
+            merged.pop(k, None)
+        elif isinstance(v, dict):
+            merged[k] = _merge_cfg(existing.get(k, {}) if isinstance(existing.get(k), dict) else {}, v)
         else:
-            out[k] = v
-    return out
+            merged[k] = v
+    return merged
 
 
 def _svc_out(svc: UserNotificationService) -> NotificationServiceOut:
@@ -122,16 +134,7 @@ def update_service(
 
     new_cfg = None
     if payload.config is not None:
-        merged = dict(existing_cfg)
-        for k, v in dict(payload.config).items():
-            if str(k).lower() in _SECRET_KEYS and isinstance(v, str) and not v.strip():
-                # Empty secret means keep existing.
-                continue
-            if v is None:
-                merged.pop(k, None)
-            else:
-                merged[k] = v
-        new_cfg = merged
+        new_cfg = _merge_cfg(existing_cfg, dict(payload.config))
 
     updated = update_user_notification_service(
         db,

@@ -1,24 +1,19 @@
 services:
-   ${CONTAINER_NAME:-timeboardapp}:
+  timeboardapp:
+    image: timeboardapp:00.13.00
     build: .
     container_name: ${CONTAINER_NAME:-timeboardapp}
+    user: "${PUID:-1000}:${PGID:-1000}"
     environment:
-      - TZ=${TZ:-UTC}
-      - PGID=${PGID:-1000}
-      - PUID=${PUID:-1000}
-    networks:
-      - net_internal
-      - net_external
+      TZ: ${TZ:-UTC}
+      TIMEBOARDAPP_BASE_URL: ${TIMEBOARDAPP_BASE_URL:-}
     ports:
-      - "${PORT:-8888}:8888"
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8888}:8888"
     restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
     volumes:
       - ${CONFIG_DATA:-./data}:/data
-
-networks:
-  net_internal:
-    external: true
-    name: ${INTERNAL_NETWORK:-net_internal}
-  net_external:
-    external: true
-    name: ${EXTERNAL_NETWORK:-net_external}

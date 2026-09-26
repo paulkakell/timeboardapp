@@ -1,0 +1,7 @@
+-c requirements.txt
+pytest>=9.1.1,<10
+bandit>=1.9.4,<2
+httpx>=0.28.1,<0.29
+pytest-cov>=7,<8
+openapi-spec-validator>=0.7,<1
+playwright>=1.55,<2

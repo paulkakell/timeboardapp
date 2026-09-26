@@ -37,8 +37,8 @@ email:
     import app.main as main
 
     main = importlib.reload(main)
-    client = TestClient(main.app)
-    response = client.get("/healthz", headers={"X-Forwarded-Proto": "https"})
+    client = TestClient(main.app, base_url="https://testserver")
+    response = client.get("/healthz")
 
     assert response.status_code == 200
     assert response.headers["X-Frame-Options"] == "DENY"
