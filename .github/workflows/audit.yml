@@ -1,67 +1,115 @@
-name: Audit and regression tests
+name: Regression, security, browser and container gates
 on:
   push:
-    branches: ["audit/security-api-refresh-2026-09-26"]
+    branches: [main, 'audit/security-api-refresh-2026-09-26']
   pull_request:
     branches: [main]
+  workflow_dispatch:
 permissions:
   contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: audit-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  audit:
+  regression:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.13']
     env:
       TIMEBOARDAPP_SETTINGS: /tmp/timeboardapp-audit/settings.yml
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: '3.12'
-      - name: Preserve source and inventory
+          python-version: ${{ matrix.python }}
+      - name: Isolated configuration and evidence
+        run: |
+          mkdir -p /tmp/timeboardapp-audit audit-evidence
+          printf 'database:\n  path: /tmp/timeboardapp-audit/test.db\n' > "$TIMEBOARDAPP_SETTINGS"
+          git rev-parse HEAD > audit-evidence/commit.txt
+          python --version > audit-evidence/python.txt
+          git archive -o audit-evidence/source.zip HEAD
+      - name: Install the reviewed dependency locks
+        run: |
+          python -m pip install --require-hashes -r requirements.txt -r requirements-dev.txt
+          python -m pip check
+          python -m pip freeze > audit-evidence/installed.txt
+      - name: Full regression suite and coverage
+        run: python -m pytest -q --cov=app --cov-report=xml:audit-evidence/coverage.xml --junitxml=audit-evidence/pytest.xml 2>&1 | tee audit-evidence/pytest.txt
+      - name: Source and website contract checks
+        run: |
+          python scripts/sync_docs.py --check
+          python -m compileall -q app scripts
+          find app/static/js -name '*.js' -exec node --check {} \;
+      - name: Dependency vulnerability gate
+        if: always()
+        run: python -m pip_audit --format=json --output=audit-evidence/pip-audit.json
+      - name: Static security gate (medium and high)
+        if: always()
+        run: python -m bandit -r app -ll -f json -o audit-evidence/bandit.json
+      - name: npm lock and vendor reproducibility
+        if: matrix.python == '3.13'
+        run: |
+          npm ci --ignore-scripts
+          npm audit --json > audit-evidence/npm-audit.json
+          python scripts/vendor_assets.py
+          git diff --exit-code -- app/static/vendor
+      - name: Chromium application smoke
+        if: matrix.python == '3.13'
+        run: |
+          python -m playwright install --with-deps chromium
+          python scripts/browser_smoke.py 2>&1 | tee audit-evidence/browser.txt
+      - name: Preserve exact-commit evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: audit-python-${{ matrix.python }}
+          path: audit-evidence/
+          retention-days: 30
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Compose and image build
         run: |
           mkdir -p audit-evidence
-          git archive -o audit-evidence/source.zip HEAD
-          git ls-files > audit-evidence/files.txt
-          python --version > audit-evidence/python.txt
-          mkdir -p /tmp/timeboardapp-audit
-          printf 'database:\n  path: /tmp/timeboardapp-audit/test.db\n' > "$TIMEBOARDAPP_SETTINGS"
-      - name: Install dependencies
+          docker compose config -q
+          docker build -t timeboardapp:audit . 2>&1 | tee audit-evidence/docker-build.txt
+          test "$(docker image inspect timeboardapp:audit --format '{{.Config.User}}')" = '1000:1000'
+      - name: Non-root, read-only container smoke
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements.txt -r requirements-dev.txt
-          python -m pip install bandit
-          python -m pip freeze > audit-evidence/installed.txt
-          python -m pip check
-      - name: Run regression suite
-        id: tests
-        continue-on-error: true
-        run: python -m pytest -q --junitxml=audit-evidence/pytest.xml 2>&1 | tee audit-evidence/pytest.txt
-      - name: Audit resolved dependencies
-        id: dependencies
-        continue-on-error: true
-        run: python -m pip_audit --format=json --output=audit-evidence/pip-audit.json
-      - name: Static security analysis
-        id: static
-        continue-on-error: true
-        run: python -m bandit -r app -f json -o audit-evidence/bandit.json
-      - name: Record dependency update candidates
+          docker run -d --name timeboard-audit --mount type=volume,src=timeboard-audit-data,dst=/data --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m --cap-drop ALL --security-opt no-new-privileges timeboardapp:audit
+          for attempt in $(seq 1 30); do
+            status="$(docker inspect timeboard-audit --format '{{.State.Health.Status}}')"
+            test "$status" != unhealthy
+            if test "$status" = healthy; then break; fi
+            sleep 2
+          done
+          test "$status" = healthy
+          docker exec timeboard-audit python -c "import os,pathlib; assert os.getuid()==1000; assert pathlib.Path('/data/initial-admin-password.txt').stat().st_mode & 0o777 == 0o600"
+          docker exec timeboard-audit python -c "import json,urllib.request; print(json.load(urllib.request.urlopen('http://127.0.0.1:8888/healthz')))" > audit-evidence/container-health.txt
+      - name: Container diagnostics
         if: always()
-        continue-on-error: true
-        run: python -m pip list --outdated --format=json > audit-evidence/outdated.json
-      - name: Preserve evidence
+        run: |
+          docker logs timeboard-audit > audit-evidence/container-log.txt 2>&1 || true
+          docker inspect timeboard-audit > audit-evidence/container-inspect.json || true
+          docker rm -f timeboard-audit || true
+          docker volume rm timeboard-audit-data || true
+      - name: Preserve container evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: audit-evidence
+          name: audit-container
           path: audit-evidence/
-          retention-days: 14
-      - name: Regression gate
-        if: always()
-        env:
-          TEST_RESULT: ${{ steps.tests.outcome }}
-          DEPENDENCY_RESULT: ${{ steps.dependencies.outcome }}
-        run: |
-          test "$TEST_RESULT" = success
-          test "$DEPENDENCY_RESULT" = success
+          retention-days: 30
