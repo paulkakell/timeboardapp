@@ -7,9 +7,9 @@ import os
 import re
 import runpy
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
-from collections.abc import Mapping
 
 ROOT = Path(__file__).resolve().parents[1]
 REPOSITORY = "paulkakell/timeboardapp"
