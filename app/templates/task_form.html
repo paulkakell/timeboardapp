@@ -3,9 +3,10 @@
 {% block title %}{% if mode == 'new' %}New Task{% else %}Edit Task{% endif %}{% endblock %}
 
 {% block content %}
-{% set _can_edit = (can_edit if can_edit is defined else True) %}
+{% set _can_edit = (can_edit if can_edit is defined else (mode == 'new' or (task and (current_user.is_admin or task.user_id == current_user.id)))) %}
+{% set next_self = '/tasks/' ~ task.id ~ '/edit?next=' ~ (next_url|urlencode) if task else next_url %}
 
-<div class="d-flex justify-content-between align-items-start mb-3">
+<div class="d-flex flex-wrap gap-2 justify-content-between align-items-start mb-3">
   <div>
     <h2 class="mb-1">{% if mode == 'new' %}New Task{% else %}Edit Task{% endif %}</h2>
     {% if parent_task %}
@@ -19,7 +20,7 @@
   </div>
 
   {% if mode == 'edit' %}
-  <div class="d-flex gap-2">
+  <div class="d-flex flex-wrap gap-2">
     {% if can_follow is defined and can_follow %}
       {% if is_following %}
         <form method="post" action="/tasks/{{ task.id }}/unfollow">
@@ -151,11 +152,31 @@
     <div class="list-group">
       {% for row in descendant_rows %}
         {% set st = row.task %}
-        <div class="list-group-item">
-          <div style="padding-left: {{ row.depth * 18 }}px;">
-            <a href="/tasks/{{ st.id }}/edit?next={{ next_url|urlencode }}">{{ st.name }}</a>
+        <div class="list-group-item" data-subtask-id="{{ st.id }}" data-parent-id="{{ st.parent_task_id }}" data-depth="{{ row.depth }}">
+          <div style="padding-left: {{ [row.depth, 8]|min * 12 }}px; overflow-wrap: anywhere;">
+            <a href="/tasks/{{ st.id }}/edit?next={{ next_self|urlencode }}">{{ st.name }}</a>
             <span class="badge text-bg-light ms-2">{{ st.task_type }}</span>
+            <span class="badge text-bg-secondary ms-2">{{ st.status.value if st.status.value is defined else st.status }}</span>
             <span class="small text-muted ms-2">Due {{ st.due_date_utc|dt_local }}</span>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+              {% if current_user.is_admin or st.user_id == current_user.id %}
+                {% if st.status == 'active' %}
+                  <form method="post" action="/tasks/{{ st.id }}/complete">
+                    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+                    <input type="hidden" name="next" value="{{ next_self }}">
+                    <button class="btn btn-outline-success btn-sm" type="submit" aria-label="Complete {{ st.name }}">Complete</button>
+                  </form>
+                  <form method="post" action="/tasks/{{ st.id }}/delete">
+                    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+                    <input type="hidden" name="next" value="{{ next_self }}">
+                    <button class="btn btn-outline-danger btn-sm" type="submit" aria-label="Delete {{ st.name }}">Delete</button>
+                  </form>
+                {% endif %}
+              {% endif %}
+              {% if current_user.is_admin or st.user_id == current_user.id or (can_follow is defined and can_follow) %}
+                <a class="btn btn-outline-secondary btn-sm" href="/tasks/new?parent_task_id={{ st.id }}&amp;next={{ next_self|urlencode }}">Add subtask</a>
+              {% endif %}
+            </div>
           </div>
         </div>
       {% endfor %}

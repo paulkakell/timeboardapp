@@ -1,7 +1,7 @@
 {
-  "version": "00.13.02",
+  "version": "00.13.03",
   "release_status": "source release",
-  "release_tag": "v00.13.02",
+  "release_tag": "v00.13.03",
   "review_date": "2026-09-26",
   "routes": [
     {

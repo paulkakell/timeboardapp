@@ -70,7 +70,8 @@
         <div class="card-body">
           <div class="d-flex justify-content-between align-items-start">
             <div>
-              <div class="fw-semibold">{{ t.name }}</div>
+              <div class="fw-semibold"><a href="/tasks/{{ t.id }}/edit?next={{ return_to_q }}">{{ t.name }}</a></div>
+              {% include "_task_parent.html" %}
               <div class="small text-muted">{{ t.task_type }}</div>
               {% if current_user.is_admin and user_filter == 0 %}
                 <div class="small text-muted">User: {{ t.user.username }}</div>
@@ -99,13 +100,14 @@
             </div>
           {% endif %}
 
-          <div class="d-flex gap-2 mt-3">
+          <div class="d-flex flex-wrap gap-2 mt-3">
             <form method="post" action="/tasks/{{ t.id }}/complete" class="d-inline">
     <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
               <input type="hidden" name="next" value="{{ return_to }}">
               <button class="btn btn-success btn-sm" type="submit">Complete</button>
             </form>
             <a class="btn btn-outline-secondary btn-sm" href="/tasks/{{ t.id }}/edit?next={{ return_to_q }}">Update</a>
+            <a class="btn btn-outline-secondary btn-sm" href="/tasks/new?parent_task_id={{ t.id }}&amp;next={{ return_to_q }}">Add subtask</a>
             <form method="post" action="/tasks/{{ t.id }}/delete" class="d-inline">
     <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
               <input type="hidden" name="next" value="{{ return_to }}">

@@ -1,5 +1,15 @@
 # Changelog
 
+## 00.13.03 - 2026-09-26
+
+- Fix/Subtasks: Render descendants in depth-first branch order instead of mixing siblings and grandchildren. Retain parent and subtask context after invalid edits, and return child edits/actions to the parent detail view.
+- Fix/UI: Add named parent links and subtask shortcuts to desktop and mobile dashboards; expose child status and permission-checked completion/deletion controls in the nested list. Dashboard filtering, ordering and pagination remain flat by design.
+- Fix/Authorization: Authorize task edits before rendering validation errors; suppress inconsistent cross-owner parent/descendant metadata. Existing owner, administrator and manager roles are unchanged.
+- Tests: Add 24 targeted ordering, persistence, permissions, error, cloning, recurrence, cascade and query regressions, plus a real Chromium nested-task desktop/mobile flow.
+- Maintenance: Synchronize source version 00.13.03 (npm 0.13.3), documentation, badges, container metadata and release guidance.
+
+Compatibility: No database migration, dependency update or API contract change. Stored parent IDs, recurrence and cascade semantics remain unchanged. Existing deployments need an explicit application upgrade. Previous source release: v00.13.02.
+
 ## 00.13.02 - 2026-09-26
 
 - Additive/Community: Add an original Code of Conduct with reporting, fair review, enforcement, and reconsideration procedures; add repository-specific Contributing Guidelines with isolated setup, validation, release, security, and rollback instructions.

@@ -99,7 +99,8 @@
               <div class="small text-muted">Due {{ t.due_date_utc|dt_local }}</div>
             </td>
             <td>
-              <div class="fw-semibold">{% if t.parent_task_id %}&#8627;&nbsp;{% endif %}{{ t.name }}</div>
+              <div class="fw-semibold"><a href="/tasks/{{ t.id }}/edit?next={{ return_to_q }}">{{ t.name }}</a></div>
+              {% include "_task_parent.html" %}
               {% if t.description %}<div class="small text-muted">{{ t.description | linkify }}</div>{% endif %}
               {% if t.url %}<div class="small"><a href="{{ t.url|safe_task_url }}" target="_blank" rel="noopener">{{ t.url }}</a></div>{% endif %}
             </td>
@@ -119,6 +120,8 @@
               </form>
               <span class="text-muted">|</span>
               <a class="btn btn-link btn-sm p-0" href="/tasks/{{ t.id }}/edit?next={{ return_to_q }}">Update</a>
+              <span class="text-muted">|</span>
+              <a class="btn btn-link btn-sm p-0" href="/tasks/new?parent_task_id={{ t.id }}&amp;next={{ return_to_q }}">Add subtask</a>
               <span class="text-muted">|</span>
               <form method="post" action="/tasks/{{ t.id }}/delete" class="d-inline">
     <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">

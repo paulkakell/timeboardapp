@@ -1075,7 +1075,7 @@ def list_tasks(
         task_type=task_type,
         status=status,
         include_assigned_by_me=include_assigned_by_me,
-    ).options(joinedload(Task.tags), joinedload(Task.user))
+    ).options(joinedload(Task.tags), joinedload(Task.user), joinedload(Task.parent))
 
     # Sorting
     desc = False

@@ -2,10 +2,10 @@
 
 A self-hosted task board with recurrence, nested subtasks, calendar and mobile views, tags, manager assignment, task following, notifications, and administrator tools. FastAPI, Jinja, SQLAlchemy/SQLite, and APScheduler power the application.
 
-**Source version:** `00.13.02`. This patch adds community guidelines and contribution templates, and fixes release publication after ordinary main-branch pushes; it introduces no new application compatibility changes. Upgrades from versions before 00.13.00 still require the documented authentication/deployment migration. Read [release notes](RELEASE_NOTES_00.13.02.md) and [versioning guidance](VERSIONING.md) before upgrading. A source release does not automatically upgrade existing application deployments.
+**Source version:** `00.13.03`. This patch repairs nested-subtask branch ordering, parent navigation, validation-error context and desktop/mobile controls without changing saved task relationships, API contracts or dependencies. Upgrades from versions before 00.13.00 still require the documented authentication/deployment migration. Read [release notes](RELEASE_NOTES_00.13.03.md) and [versioning guidance](VERSIONING.md) before upgrading. A source release does not automatically upgrade existing application deployments.
 
 <!-- release-badges:start -->
-[![Source version 00.13.02](docs/assets/badges/version.svg)](https://github.com/paulkakell/timeboardapp/releases/tag/v00.13.02)
+[![Source version 00.13.03](docs/assets/badges/version.svg)](https://github.com/paulkakell/timeboardapp/releases/tag/v00.13.03)
 [![CI on main](https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml/badge.svg?branch=main&event=push)](https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml?query=branch%3Amain)
 [![Tested Python 3.12 and 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](https://github.com/paulkakell/timeboardapp/blob/main/.github/workflows/audit.yml)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/paulkakell/timeboardapp/blob/main/LICENSE)
