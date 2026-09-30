@@ -16,6 +16,14 @@ security:
 database:
   path: "/data/timeboardapp.db"     # SQLite database file
 
+mcp:
+  enabled: false                  # Experimental; requires HTTPS app.base_url with no path prefix
+  allowed_redirect_uris:          # Exact matches only; copy the callback shown by your ChatGPT client
+    - "https://chatgpt.com/connector_platform_oauth_redirect"
+  access_token_seconds: 900       # 60-3600 seconds
+  refresh_token_days: 30          # Absolute connection lifetime, 1-90 days
+  max_clients: 200                # Bound dynamic OAuth client registrations
+
 purge:
   default_days: 15                # Default purge window for archived tasks (per-user override exists)
   interval_minutes: 60            # How often to purge archived tasks

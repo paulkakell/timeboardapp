@@ -18,11 +18,13 @@ def _origin(value: str) -> tuple[str, str, int | None]:
 
 
 class BrowserSecurityMiddleware:
-    def __init__(self, app, *, base_url: str = "", max_body_bytes: int = 10 * 1024 * 1024):
+    def __init__(self, app, *, base_url: str = "", max_body_bytes: int = 10 * 1024 * 1024, mcp_enabled: bool = False):
         self.app = app
         self.base_url = base_url
         self.max_body_bytes = max_body_bytes
         self.login_limiter = LoginLimiter()
+        self.mcp_enabled = mcp_enabled
+        self.mcp_limiter = LoginLimiter(limit=120, window=60)
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -33,12 +35,20 @@ class BrowserSecurityMiddleware:
         if request.method in _SAFE:
             return await self.app(scope, receive, send)
 
-        auth_request = request.url.path in {"/login", "/api/auth/token", "/forgot-email", "/reset-password"}
+        path = request.url.path
+        mcp_machine = self.mcp_enabled and path in {"/mcp", "/token", "/register", "/revoke"}
+        auth_request = path in {"/login", "/api/auth/token", "/forgot-email", "/reset-password"} or (self.mcp_enabled and path in {"/register", "/mcp/consent"})
+        if mcp_machine:
+            retry = self.mcp_limiter.retry_after(request.client.host if request.client else "unknown")
+            if retry:
+                return await JSONResponse({"detail": "Too many integration requests"}, status_code=429, headers={"Retry-After": str(retry)})(scope, receive, send)
         if auth_request:
             retry = self.login_limiter.retry_after(request.client.host if request.client else "unknown")
             if retry:
                 return await JSONResponse({"detail": "Too many authentication attempts"}, status_code=429, headers={"Retry-After": str(retry)})(scope, receive, send)
         max_body = min(self.max_body_bytes, 16384) if auth_request else self.max_body_bytes
+        if mcp_machine:
+            max_body = min(max_body, 1024 * 1024 if path == "/mcp" else 16384)
         chunks = []
         size = 0
         async for chunk in request.stream():
@@ -57,7 +67,7 @@ class BrowserSecurityMiddleware:
             return await receive()
 
         # API routes use Authorization bearer credentials, never browser cookies.
-        if not request.url.path.startswith("/api/"):
+        if not request.url.path.startswith("/api/") and not mcp_machine:
             try:
                 incoming = request.headers.get("origin")
                 if incoming and _origin(incoming) != _origin(self.base_url or str(request.base_url)):

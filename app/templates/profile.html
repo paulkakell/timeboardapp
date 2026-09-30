@@ -73,4 +73,11 @@
   <p class="mb-2">Manage notification services and routing tags.</p>
   <a class="btn btn-outline-primary" href="/profile/notifications">Open notification settings</a>
 </div>
+{% if mcp_enabled %}
+<div class="card card-body mt-3">
+  <h2 class="h6">Connected applications</h2>
+  <p class="mb-2">Review or disconnect applications that access your account.</p>
+  <a class="btn btn-outline-primary" href="/profile/connections">Manage connections</a>
+</div>
+{% endif %}
 {% endblock %}
