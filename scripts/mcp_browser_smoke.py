@@ -166,7 +166,18 @@ def main():
                     page.goto("/authorize?" + query)
                     page.locator("input[name=username]").fill("admin")
                     page.locator("input[name=password]").fill(password)
-                    page.get_by_role("button", name="Sign in", exact=True).click()
+                    with page.expect_response(
+                        lambda response: (
+                            urlsplit(response.url).path == "/mcp/consent"
+                            and response.request.method == "POST"
+                        )
+                    ) as signed_in:
+                        page.get_by_role("button", name="Sign in", exact=True).click()
+                    login = signed_in.value
+                    assert login.status == 303, (
+                        f"Consent login HTTP {login.status}; Origin={login.request.headers.get('origin')}"
+                    )
+                    assert login.request.headers.get("origin") == BASE
                     page.get_by_role("button", name="Allow access").wait_for()
                     assert "Read your tasks" in page.locator("body").inner_text()
                     assert "Create, change" not in page.locator("body").inner_text()

@@ -560,6 +560,15 @@ def test_consent_csrf_and_unregistered_redirect(system):
     response = c.get("/authorize", params=params)
     url = response.headers["location"]
     page = c.get(url)
+    assert page.headers["referrer-policy"] == "same-origin"
+    assert (
+        c.post(
+            url,
+            data={"action": "login", "csrf_token": csrf(page)},
+            headers={"Origin": "null"},
+        ).status_code
+        == 403
+    )
     assert (
         c.post(
             url, data={"action": "login", "username": "manager", "password": PASSWORD}

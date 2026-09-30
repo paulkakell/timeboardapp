@@ -275,7 +275,10 @@ def browser_router(provider):
             ),
         )
         response.headers["Cache-Control"] = "no-store"
-        response.headers["Referrer-Policy"] = "no-referrer"
+        # no-referrer turns native form POST Origin into null in browsers,
+        # which correctly fails the website's origin/CSRF check. same-origin
+        # preserves that check and still hides the consent URL from callbacks.
+        response.headers["Referrer-Policy"] = "same-origin"
         return response
 
     @router.get("/mcp/consent")
