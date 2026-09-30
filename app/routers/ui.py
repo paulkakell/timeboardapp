@@ -57,6 +57,7 @@ from ..crud import (
     update_user_me,
 )
 from ..db import SessionLocal, get_db
+from ..services.assignment import can_assign_to
 from ..db_admin import (
     AUTO_BACKUP_FREQUENCIES,
     backup_database_json,
@@ -586,6 +587,7 @@ def _template_context(request: Request, user: Optional[User], db: Session | None
 
     return {
         "request": request,
+        "mcp_enabled": get_settings().mcp.enabled,
         "current_user": user,
         "app_name": settings.app.name,
         "site_mode": _site_mode(request),
@@ -1516,7 +1518,7 @@ def task_new_post(
         return _redirect("/dashboard")
 
     if not user.is_admin and int(owner_user.id) != int(user.id):
-        if not is_manager_of(db, manager_user_id=int(user.id), subordinate_user_id=int(owner_user.id)):
+        if not can_assign_to(db, user, int(owner_user.id)):
             return _redirect("/dashboard")
 
     assigned_by_id = int(user.id) if int(owner_user.id) != int(user.id) else None

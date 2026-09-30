@@ -163,6 +163,17 @@ class DemoSettings(BaseModel):
     disable_external_apis: bool = True
 
 
+class MCPSettings(BaseModel):
+    enabled: bool = False
+    # Copy exact callbacks from ChatGPT's connection page. No wildcard matches.
+    allowed_redirect_uris: list[str] = Field(default_factory=lambda: [
+        "https://chatgpt.com/connector_platform_oauth_redirect",
+    ])
+    access_token_seconds: int = Field(default=900, ge=60, le=3600)
+    refresh_token_days: int = Field(default=30, ge=1, le=90)
+    max_clients: int = Field(default=200, ge=1, le=10000)
+
+
 class Settings(BaseModel):
     app: AppSettings = Field(default_factory=AppSettings)
     security: SecuritySettings = Field(default_factory=SecuritySettings)
@@ -171,6 +182,7 @@ class Settings(BaseModel):
     email: EmailSettings = Field(default_factory=EmailSettings)
     logging: LoggingSettings = Field(default_factory=LoggingSettings)
     demo: DemoSettings = Field(default_factory=DemoSettings)
+    mcp: MCPSettings = Field(default_factory=MCPSettings)
 
 
 def _ensure_settings_file(path: str) -> None:
@@ -251,4 +263,28 @@ def get_settings() -> Settings:
         _ = parsed.port  # Validate the port before accepting the configuration.
     if s.security.session_secret == s.security.jwt_secret:
         raise ValueError("Session and JWT signing secrets must be distinct")
+    mcp_enabled = _env("MCP_ENABLED")
+    if mcp_enabled is not None:
+        if mcp_enabled.lower() not in {"true", "false", "1", "0"}:
+            raise ValueError("TIMEBOARDAPP_MCP_ENABLED must be true or false")
+        s.mcp.enabled = mcp_enabled.lower() in {"true", "1"}
+    redirects = _env("MCP_REDIRECT_URIS")
+    if redirects:
+        s.mcp.allowed_redirect_uris = [u.strip() for u in redirects.split(",") if u.strip()]
+    if s.mcp.enabled:
+        base = urlsplit(s.app.base_url)
+        if base.scheme != "https" or not base.hostname or base.path not in {"", "/"}:
+            raise ValueError("MCP requires an HTTPS TIMEBOARDAPP_BASE_URL without a path prefix")
+        if s.demo.enabled:
+            raise ValueError("MCP cannot be enabled in the public demo environment")
+        if not s.mcp.allowed_redirect_uris:
+            raise ValueError("MCP requires at least one exact OAuth redirect URI")
+        for uri in s.mcp.allowed_redirect_uris:
+            from pydantic import AnyHttpUrl
+            AnyHttpUrl(uri)  # Validate hostnames before using callback origins in CSP.
+            target = urlsplit(uri)
+            loopback = target.scheme == "http" and target.hostname in {"localhost", "127.0.0.1", "::1"}
+            if (target.scheme != "https" and not loopback) or not target.hostname or target.username or target.password or target.fragment or "*" in uri:
+                raise ValueError("MCP redirect URIs must be exact HTTPS URLs (HTTP loopback is allowed for Inspector)")
+            _ = target.port
     return s

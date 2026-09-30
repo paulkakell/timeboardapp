@@ -1,0 +1,1 @@
+"""Optional native MCP integration."""

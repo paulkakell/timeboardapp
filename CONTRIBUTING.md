@@ -14,7 +14,7 @@ Do not file security vulnerabilities in public issues. Follow [SECURITY.md](SECU
 
 For a small correction, a focused pull request with a reproducing test is sufficient. For API changes, dependency major upgrades, new integrations, or feature removal, first describe the use case, alternatives, compatibility impact, and acceptance criteria in a feature request. A fix-or-deprecate proposal should explain who relies on the feature and how existing data or clients would migrate. Do not silently remove supported behavior.
 
-ChatGPT support currently means private GPT Actions. Native MCP, shared per-user OAuth, and model-serving APIs are different capabilities and must not be presented as already implemented.
+The published release supports private GPT Actions. This testing branch adds experimental native MCP and per-user OAuth behind an opt-in flag; see [MCP_TESTING.md](MCP_TESTING.md). Keep branch capabilities separate from released and live-tested behavior. Model-serving APIs are a different capability.
 
 ## Create a branch
 

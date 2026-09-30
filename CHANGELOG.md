@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased - native MCP testing branch
+
+- Additive: Opt-in Streamable HTTP MCP at `/mcp`, eleven account/task/assignment tools, per-tool scopes, persistent OAuth authorization-code grants with S256 PKCE, explicit consent, rotating refresh tokens, and connection revocation.
+- Additive: Profile connection management, bounded client registration, hashed opaque credentials, mutation audit records, and atomic retry keys for creation and assignment.
+- Maintenance: Share task operations and assignment permissions with the existing application; retain private GPT Actions contracts and owner-only task access. Lock MCP SDK 2.2.0 and its dependencies.
+- Validation: Add protocol, authorization, concurrency, migration/feature rollback, and browser coverage plus a disposable test deployment guide.
+
+Compatibility: Disabled by default. Enabling requires an HTTPS application origin without a path prefix and creates five additive SQLite tables. Existing APIs remain available. See MCP_TESTING.md for schema, backup, rollback, and live acceptance limitations. No release/version bump, merge, or production rollout is requested by this testing branch.
+
 ## 00.13.02 - 2026-09-26
 
 - Additive/Community: Add an original Code of Conduct with reporting, fair review, enforcement, and reconsideration procedures; add repository-specific Contributing Guidelines with isolated setup, validation, release, security, and rollback instructions.

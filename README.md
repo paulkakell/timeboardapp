@@ -38,7 +38,9 @@ The deployed application provides `/docs` and `/openapi.json`. Task listings are
 
 The separate private GPT Actions interface exposes eight owner-only task operations at `/api/chatgpt`. Create a revocable read-only token by default through `POST /api/integrations/tokens`, then use API-key/Bearer authentication in a **private** custom GPT. Import `/openapi-chatgpt.json` from the HTTPS application deployment. Tokens are shown once, hashed at rest, scoped, expiring, and unable to access administrator APIs. An administrator's integration token still accesses only that administrator's own tasks.
 
-This is not a native ChatGPT MCP app, shared per-user OAuth, or an OpenAI model-serving API. Those require distinct implementations. A real GPT-editor/TLS acceptance test remains necessary; local schema tests do not establish live account compatibility. Never place access tokens in a GPT prompt, public schema, or source file.
+This testing branch also adds an **experimental native MCP endpoint** at `/mcp`, with individual OAuth consent, eleven task/account/assignment tools, and profile controls to disconnect applications. It is disabled by default and is not part of the published 00.13.02 release. Use the [isolated MCP testing guide](MCP_TESTING.md) and its separate Compose deployment. Existing private GPT Actions continue to use their existing interface.
+
+A real ChatGPT/TLS acceptance test remains necessary; local protocol tests do not establish live account compatibility. This application does not serve OpenAI models. Never place access tokens in a GPT prompt, public schema, or source file.
 
 ## Feature and notification boundaries
 

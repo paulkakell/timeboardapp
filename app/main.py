@@ -54,14 +54,18 @@ logger = logging.getLogger("timeboardapp")
 async def lifespan(application: FastAPI):
     on_startup()
     try:
-        yield
+        if mcp_server is not None:
+            async with mcp_server.session_manager.run():
+                yield
+        else:
+            yield
     finally:
         on_shutdown()
 
 
 app = FastAPI(title=settings.app.name, version=APP_VERSION, lifespan=lifespan)
 
-app.add_middleware(BrowserSecurityMiddleware, base_url=settings.app.base_url)
+app.add_middleware(BrowserSecurityMiddleware, base_url=settings.app.base_url, mcp_enabled=settings.mcp.enabled)
 secure_cookies = settings.security.secure_cookies
 if secure_cookies is None:
     secure_cookies = settings.app.base_url.startswith("https://")
@@ -92,6 +96,15 @@ async def add_browser_security_headers(request: Request, call_next):
     response = await call_next(request)
     response.headers.setdefault("X-Frame-Options", "DENY")
     policy = SECURITY_CONTENT_SECURITY_POLICY
+    if settings.mcp.enabled and request.url.path == "/mcp/consent":
+        # Browsers enforce form-action on the OAuth POST's redirect too.
+        # Allow only configured callback origins, on this consent page only.
+        from pydantic import AnyHttpUrl
+        origins = set()
+        for uri in settings.mcp.allowed_redirect_uris:
+            callback = urlsplit(str(AnyHttpUrl(uri)))
+            origins.add(f"{callback.scheme}://{callback.netloc}")
+        policy = policy.replace("form-action 'self'", "form-action 'self' " + " ".join(sorted(origins)))
     # FastAPI's optional interactive documentation still loads its own viewer.
     if request.url.path in {"/docs", "/redoc", "/docs/oauth2-redirect"}:
         policy = policy.replace("script-src 'self'", "script-src 'self' https://cdn.jsdelivr.net").replace("style-src 'self'", "style-src 'self' https://cdn.jsdelivr.net")
@@ -659,3 +672,13 @@ def root(request: Request):
 @app.get("/healthz", include_in_schema=False)
 def healthz():
     return {"status": "ok", "version": APP_VERSION}
+
+
+# The root mount must remain last so existing website/API routes keep priority.
+mcp_server = None
+if settings.mcp.enabled:
+    from .mcp.server import build_mcp
+    mcp_server, mcp_http, mcp_browser, mcp_auth_routes, _ = build_mcp(settings, SessionLocal)
+    app.include_router(mcp_browser)
+    app.router.routes.extend(mcp_auth_routes)
+    app.mount("/", mcp_http)
