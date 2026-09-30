@@ -226,7 +226,10 @@ def main():
                         == 200
                     )
                     page.goto(BASE + "/profile")
-                    page.get_by_role("link", name="Connected applications").click()
+                    assert urlsplit(page.url).path == "/profile"
+                    page.get_by_role(
+                        "link", name="Manage connections", exact=True
+                    ).click()
                     page.get_by_role("button", name="Disconnect").click()
                     assert (
                         "No applications are connected"
