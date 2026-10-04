@@ -274,7 +274,7 @@
     },
     {
       "name": "fastapi",
-      "version": "0.141.1"
+      "version": "0.142.2"
     },
     {
       "name": "filelock",
@@ -319,6 +319,10 @@
     {
       "name": "msgpack",
       "version": "1.2.2"
+    },
+    {
+      "name": "opentelemetry-api",
+      "version": "1.45.0"
     },
     {
       "name": "packageurl-python",

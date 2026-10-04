@@ -1,5 +1,5 @@
 # Runtime direct dependencies. Regenerate requirements.txt with pip-compile.
-fastapi>=0.141.1,<1
+fastapi>=0.142.2,<1
 pydantic>=2.13.5,<3
 uvicorn[standard]>=0.54.0,<0.55
 Jinja2>=3.1.6,<4
