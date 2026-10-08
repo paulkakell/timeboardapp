@@ -282,7 +282,7 @@
     },
     {
       "name": "fastapi",
-      "version": "0.141.1"
+      "version": "0.142.2"
     },
     {
       "name": "filelock",
@@ -402,7 +402,7 @@
     },
     {
       "name": "pyjwt",
-      "version": "2.15.0"
+      "version": "2.15.1"
     },
     {
       "name": "pyparsing",
