@@ -4,13 +4,13 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>TimeboardApp — Lightweight recurring task board</title>
-  <meta name="description" content="TimeboardApp is a lightweight, dockerized task board with powerful recurrence (sub-daily intervals, time slots, fixed clock schedules), a mobile-friendly UI, and a documented API." />
+  <meta name="description" content="TimeboardApp is a self-hosted recurring task board with a mobile-friendly UI, REST API, private GPT Actions, and optional native MCP with per-user OAuth for ChatGPT." />
   <meta name="theme-color" content="#0b1220" />
 
   <link rel="canonical" href="https://timeboardapp.com/" />
 
   <meta property="og:title" content="TimeboardApp" />
-  <meta property="og:description" content="A lightweight recurring task board: sub-daily recurrence, time slots, fixed clock schedules, mobile UI, API." />
+  <meta property="og:description" content="A self-hosted recurring task board with mobile UI, REST API, private GPT Actions, and optional native MCP for ChatGPT." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://timeboardapp.com/" />
 
@@ -47,12 +47,13 @@
 
   <main>
 <!-- release-badges:start -->
-<section class="release-status" aria-label="Source release information"><div class="container"><p>Source version <strong>00.13.02</strong> · 2026-09-26. Existing application deployments require an upgrade.</p><div class="release-badges"><a href="https://github.com/paulkakell/timeboardapp/releases/tag/v00.13.02"><img src="/assets/badges/version.svg" alt="Source version 00.13.02" height="20"></a>
+<section class="release-status" aria-label="Source release information"><div class="container"><p>Source version <strong>00.14.00</strong> · 2026-10-08. Existing application deployments require an upgrade.</p><div class="release-badges"><a href="https://github.com/paulkakell/timeboardapp/releases/tag/v00.14.00"><img src="/assets/badges/version.svg" alt="Source version 00.14.00" height="20"></a>
 <a href="https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml?query=branch%3Amain"><img src="https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml/badge.svg?branch=main&amp;event=push" alt="CI on main" height="20"></a>
 <a href="https://github.com/paulkakell/timeboardapp/blob/main/.github/workflows/audit.yml"><img src="https://img.shields.io/badge/python-3.12%20%7C%203.13-blue" alt="Tested Python 3.12 and 3.13" height="20"></a>
 <a href="https://github.com/paulkakell/timeboardapp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue" alt="MIT license" height="20"></a>
-<a href="https://timeboardapp.com/docs/chatgpt.html"><img src="https://img.shields.io/badge/ChatGPT-private%20GPT%20Actions-blue" alt="Private GPT Actions" height="20"></a></div></div></section>
-<!-- release-badges:end --><section class="section"><div class="container callout"><strong>Source version 00.13.02 · September 26, 2026</strong><p>Security hardening, dependency locks, and a private ChatGPT Actions interface are documented for the reviewed source. Check the <a href="/docs/reference.html">generated package and route reference</a> and <a href="/docs/deployment.html">migration requirements</a>; existing deployments are not automatically upgraded.</p></div></section>
+<a href="https://timeboardapp.com/docs/chatgpt.html"><img src="https://img.shields.io/badge/ChatGPT-private%20GPT%20Actions-blue" alt="Private GPT Actions" height="20"></a>
+<a href="https://timeboardapp.com/docs/chatgpt.html#native-mcp"><img src="https://img.shields.io/badge/MCP-opt--in-blue" alt="Native MCP (opt-in)" height="20"></a></div></div></section>
+<!-- release-badges:end --><section class="section"><div class="container callout"><strong>Source version 00.14.00 · October 8, 2026</strong><p>This release includes experimental native MCP with per-user OAuth and eleven scoped tools for ChatGPT, alongside existing private GPT Actions. MCP remains disabled by default. Follow <a href="/docs/deployment.html">the upgrade steps</a>, then <a href="/docs/chatgpt.html">enable and connect MCP</a>; existing containers are not automatically upgraded.</p></div></section>
     <section class="hero">
       <div class="container hero-grid">
         <div>
@@ -60,10 +61,11 @@
           <h1>TimeboardApp</h1>
           <p class="lead">
             A lightweight, dockerized task board built for schedules like “every 8 hours after completion”, “at 08:00/15:00/23:00”, and
-            fixed clock intervals. Mobile-friendly UI, SQLite storage, and an OpenAPI-documented REST API and owner-scoped private GPT Actions.
+            fixed clock intervals. Mobile-friendly UI, SQLite storage, an OpenAPI-documented REST API, private GPT Actions, and optional native MCP for ChatGPT.
           </p>
           <div class="actions">
             <a class="btn primary" href="/docs/getting-started.html">Get started</a>
+            <a class="btn" href="/docs/chatgpt.html">Connect ChatGPT</a>
             <a class="btn" href="/docs/architecture.html">How it works</a>
             <a class="btn" href="https://github.com/paulkakell/timeboardapp" target="_blank" rel="noopener">View on GitHub</a>
           </div>
@@ -83,8 +85,8 @@
             </div>
             <div class="card">
               <div class="badge">API</div>
-              <h3>Documented</h3>
-              <p>OpenAPI/Swagger documentation included. Automate tasks, notifications, and integrations.</p>
+              <h3>API + ChatGPT</h3>
+              <p>REST and private GPT Actions, plus experimental MCP with individual sign-in, scoped task tools, and revocable connections.</p>
             </div>
           </div>
         </div>
@@ -106,6 +108,7 @@
             <li>FastAPI backend + server-rendered HTML templates</li>
             <li>SQLite database on a Docker volume</li>
             <li>Background jobs for reminders, demo resets, and purging</li>
+            <li>Optional native MCP: read, create, update, complete, archive, restore, and assign eligible tasks through ChatGPT</li>
             <li>Notification channels: browser (connected-page SSE), SMTP/SendGrid email, Discord, webhook, generic API, Gotify, ntfy, and legacy UWP WNS</li>
           </ul>
         </aside>
@@ -127,8 +130,8 @@
             <p>User management, database export/import, email settings, logging retention, and full validation utilities.</p>
           </div>
           <div class="card">
-            <h3>Notifications</h3>
-            <p>Per-user notification services, tags, and optional past-due tag shortcuts. Delivery is asynchronous and events are auditable via the API.</p>
+            <h3>ChatGPT connections</h3>
+            <p>Sign in with your own Timeboard account and review OAuth permissions. Disconnect from your profile. MCP is experimental, opt-in, and requires a public HTTPS application origin.</p>
           </div>
         </div>
       </div>

@@ -1,12 +1,14 @@
 services:
   timeboardapp:
-    image: timeboardapp:00.13.02
+    image: timeboardapp:00.14.00
     build: .
     container_name: ${CONTAINER_NAME:-timeboardapp}
     user: "${PUID:-1000}:${PGID:-1000}"
     environment:
       TZ: ${TZ:-UTC}
       TIMEBOARDAPP_BASE_URL: ${TIMEBOARDAPP_BASE_URL:-}
+      # Empty preserves mcp.enabled in settings.yml; true/false overrides it.
+      TIMEBOARDAPP_MCP_ENABLED: ${TIMEBOARDAPP_MCP_ENABLED:-}
     ports:
       - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-8888}:8888"
     restart: unless-stopped

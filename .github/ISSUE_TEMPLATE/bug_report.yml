@@ -41,7 +41,7 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: Include OS, relevant browser/version, Python or Docker/Compose version, and proxy use. Omit hostnames or paths that reveal private details.
+      description: Include OS, relevant browser/version, Python or Docker/Compose version, and proxy use. For ChatGPT, identify native MCP or private GPT Actions and whether MCP is enabled. Omit hostnames or paths that reveal private details.
     validations:
       required: true
   - type: textarea

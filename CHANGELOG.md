@@ -1,13 +1,18 @@
 # Changelog
 
-## Unreleased - native MCP testing branch
+## 00.14.00 - 2026-10-08
 
 - Additive: Opt-in Streamable HTTP MCP at `/mcp`, eleven account/task/assignment tools, per-tool scopes, persistent OAuth authorization-code grants with S256 PKCE, explicit consent, rotating refresh tokens, and connection revocation.
 - Additive: Profile connection management, bounded client registration, hashed opaque credentials, mutation audit records, and atomic retry keys for creation and assignment.
 - Maintenance: Share task operations and assignment permissions with the existing application; retain private GPT Actions contracts and owner-only task access. Lock MCP SDK 2.2.0 and its dependencies.
 - Validation: Add protocol, authorization, concurrency, migration/feature rollback, and browser coverage plus a disposable test deployment guide.
+- Maintenance: Include FastAPI 0.142.2 and PyJWT 2.15.1, retaining the reviewed hash locks and dependency reference.
+- Documentation: Update in-app help, README, MCP setup/testing, contributor/security guidance, website pages, release badges, and generated references for the released opt-in capability.
+- Deployment: Expose `TIMEBOARDAPP_MCP_ENABLED` in regular Compose. Empty preserves settings YAML; explicit true/false overrides it. Advance application/container version to 00.14.00 and npm metadata to 0.14.0.
 
-Compatibility: Disabled by default. Enabling requires an HTTPS application origin without a path prefix and creates five additive SQLite tables. Existing APIs remain available. See MCP_TESTING.md for schema, backup, rollback, and live acceptance limitations. No release/version bump, merge, or production rollout is requested by this testing branch.
+Compatibility: Additive release with no intended breaking API changes from 00.13.02. MCP is experimental and disabled by default. Enabling requires an HTTPS application origin without a path prefix and creates five additive SQLite tables. Existing APIs remain available. See MCP_TESTING.md for schema, backup, rollback, and live acceptance limitations. A source release does not publish a registry image or upgrade a running instance.
+
+Refs: PR #34 (native MCP/OAuth), PR #35 (PyJWT), PR #36 (FastAPI). Previous published release: v00.13.02. Release validation and artifact provenance are recorded by the final release PR, CI, and RELEASE_MANIFEST.json.
 
 ## 00.13.02 - 2026-09-26
 

@@ -14,7 +14,7 @@ Do not file security vulnerabilities in public issues. Follow [SECURITY.md](SECU
 
 For a small correction, a focused pull request with a reproducing test is sufficient. For API changes, dependency major upgrades, new integrations, or feature removal, first describe the use case, alternatives, compatibility impact, and acceptance criteria in a feature request. A fix-or-deprecate proposal should explain who relies on the feature and how existing data or clients would migrate. Do not silently remove supported behavior.
 
-The published release supports private GPT Actions. This testing branch adds experimental native MCP and per-user OAuth behind an opt-in flag; see [MCP_TESTING.md](MCP_TESTING.md). Keep branch capabilities separate from released and live-tested behavior. Model-serving APIs are a different capability.
+Version 00.14.00 supports private GPT Actions and experimental native MCP with per-user OAuth behind an opt-in flag; see [MCP_TESTING.md](MCP_TESTING.md). MCP is disabled by default. Keep automated protocol/browser checks separate from live ChatGPT acceptance, which has not been completed for this release. Model-serving APIs are a different capability.
 
 ## Create a branch
 
@@ -86,14 +86,16 @@ For UI changes, exercise the real browser flow:
 ```sh
 python -m playwright install --with-deps chromium
 python scripts/browser_smoke.py
+python scripts/mcp_browser_smoke.py
 ```
 
-This launches its own disposable instance on loopback port 8765. Include relevant desktop/mobile observations and sanitized screenshots for changed UI behavior. Live notification delivery and real ChatGPT acceptance require separate credentials and explicit operator testing; do not claim those checks based on mocked tests.
+The regular browser script launches its own disposable instance on loopback port 8765. The MCP script starts another isolated instance, exercises browser sign-in/consent/disconnection, and intercepts the OAuth callback locally. Include relevant desktop/mobile observations and sanitized screenshots for changed UI behavior. Live notification delivery and real ChatGPT acceptance require separate credentials and explicit operator testing; do not claim those checks based on local protocol/browser tests. For changes to MCP or shared task services, cover scope/ownership enforcement and both MCP and legacy GPT Actions behavior. Use `python scripts/benchmark_mcp.py` for the documented synthetic comparison when performance is affected.
 
 For container changes, validate Compose, perform a fresh build, and follow the non-root/read-only runtime checks in the CI workflow:
 
 ```sh
 docker compose config -q
+MCP_TEST_BASE_URL=https://timeboard-test.example.com docker compose -f docker-compose.mcp-test.yml config -q
 docker build --no-cache --build-arg VCS_REF="$(git rev-parse HEAD)" -t timeboardapp:review .
 ```
 

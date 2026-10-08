@@ -3,7 +3,7 @@ app:
   timezone: "America/Denver"   # Used for display and interpreting date/time inputs
   host: "0.0.0.0"
   port: 8888
-  base_url: ""                 # If served behind a reverse proxy, e.g. https://example.com
+  base_url: ""                 # Public origin, e.g. https://example.com; MCP requires HTTPS with no path prefix
 
 security:
   session_secret: "CHANGE_ME_SESSION_SECRET"  # Used to sign UI session cookies
@@ -17,6 +17,8 @@ database:
   path: "/data/timeboardapp.db"     # SQLite database file
 
 mcp:
+  # Available in 00.14.00; a nonempty TIMEBOARDAPP_MCP_ENABLED overrides enabled.
+  # The release Compose file passes that variable from .env; empty preserves this setting.
   enabled: false                  # Experimental; requires HTTPS app.base_url with no path prefix
   allowed_redirect_uris:          # Exact matches only; copy the callback shown by your ChatGPT client
     - "https://chatgpt.com/connector_platform_oauth_redirect"
