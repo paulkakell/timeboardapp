@@ -12,7 +12,7 @@ from test_mcp import (
     exchange,
     registration,
 )
-from test_mcp import system  # noqa: F401 - Registers the isolated pytest fixture.
+from test_mcp import system as system  # noqa: PLC0414 - Re-export the pytest fixture.
 
 from app.mcp.models import MCPCredential, MCPGrant
 
