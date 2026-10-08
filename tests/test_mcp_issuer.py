@@ -3,8 +3,6 @@
 from urllib.parse import parse_qs, urlsplit
 
 import pytest
-
-from app.mcp.models import MCPCredential, MCPGrant
 from test_mcp import (
     BASE,
     CHALLENGE,
@@ -14,7 +12,9 @@ from test_mcp import (
     exchange,
     registration,
 )
-from test_mcp import system as system  # Reuse the isolated real-provider fixture.
+from test_mcp import system  # noqa: F401 - Registers the isolated pytest fixture.
+
+from app.mcp.models import MCPCredential, MCPGrant
 
 STATE = "issuer-test +%&="
 
