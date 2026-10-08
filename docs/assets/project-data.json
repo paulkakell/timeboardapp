@@ -241,6 +241,10 @@
       "version": "26.1.0"
     },
     {
+      "name": "attrs",
+      "version": "26.1.0"
+    },
+    {
       "name": "boolean-py",
       "version": "5.0"
     },
@@ -265,6 +269,10 @@
       "version": "8.5.0"
     },
     {
+      "name": "cryptography",
+      "version": "50.0.2"
+    },
+    {
       "name": "cyclonedx-python-lib",
       "version": "11.12.0"
     },
@@ -285,8 +293,16 @@
       "version": "0.16.0"
     },
     {
+      "name": "httpcore2",
+      "version": "2.13.1"
+    },
+    {
       "name": "httptools",
       "version": "0.8.0"
+    },
+    {
+      "name": "httpx2",
+      "version": "2.13.1"
     },
     {
       "name": "idna",
@@ -301,6 +317,14 @@
       "version": "3.1.6"
     },
     {
+      "name": "jsonschema",
+      "version": "4.26.0"
+    },
+    {
+      "name": "jsonschema-specifications",
+      "version": "2025.9.1"
+    },
+    {
       "name": "license-expression",
       "version": "30.4.4"
     },
@@ -311,6 +335,14 @@
     {
       "name": "markupsafe",
       "version": "3.0.3"
+    },
+    {
+      "name": "mcp",
+      "version": "2.2.0"
+    },
+    {
+      "name": "mcp-types",
+      "version": "2.2.0"
     },
     {
       "name": "mdurl",
@@ -389,6 +421,10 @@
       "version": "6.0.3"
     },
     {
+      "name": "referencing",
+      "version": "0.37.0"
+    },
+    {
       "name": "requests",
       "version": "2.34.2"
     },
@@ -397,12 +433,20 @@
       "version": "15.0.0"
     },
     {
+      "name": "rpds-py",
+      "version": "2026.6.3"
+    },
+    {
       "name": "sortedcontainers",
       "version": "2.4.0"
     },
     {
       "name": "sqlalchemy",
       "version": "2.1.1"
+    },
+    {
+      "name": "sse-starlette",
+      "version": "3.5.0"
     },
     {
       "name": "starlette",
@@ -415,6 +459,10 @@
     {
       "name": "tomli-w",
       "version": "1.2.0"
+    },
+    {
+      "name": "truststore",
+      "version": "0.10.4"
     },
     {
       "name": "typing-extensions",

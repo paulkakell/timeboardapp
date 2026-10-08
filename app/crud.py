@@ -647,6 +647,7 @@ def create_task(
     parent_task_id: int | None = None,
     assigned_by_user_id: int | None = None,
     send_notifications: bool = True,
+    integration_audit=None,
 ) -> Task:
     # Allow tasks with no due date. If omitted, use creation time.
     if due_date is None:
@@ -685,6 +686,12 @@ def create_task(
         task.tags = get_or_create_tags(db, tags)
 
     db.add(task)
+    if integration_audit is not None:
+        # Persist the request key with the task, before notifications. A unique
+        # key collision rolls back both, so a retry cannot create another task.
+        db.flush()
+        integration_audit.task_id = task.id
+        db.add(integration_audit)
     db.commit()
     db.refresh(task)
 

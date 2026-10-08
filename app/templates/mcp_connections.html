@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h1 class="h4 mb-3">Connected applications</h1>
+<p>Disconnecting immediately stops the application's access to your Timeboard account.</p>
+{% for connection in connections %}
+<div class="card card-body mb-3">
+  <h2 class="h6">{{ connection.name }}</h2>
+  <p class="small">Permissions: {{ connection.scopes }}</p>
+  <form method="post" action="/profile/connections/{{ connection.id }}/revoke">
+    <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+    <button class="btn btn-outline-danger" type="submit">Disconnect</button>
+  </form>
+</div>
+{% else %}<p>No applications are connected.</p>{% endfor %}
+<a href="/profile">Back to profile</a>
+{% endblock %}

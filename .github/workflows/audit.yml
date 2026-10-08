@@ -58,6 +58,7 @@ jobs:
           echo '1bfbb819b5d4f9af501748862276b60e412d336034d99387691a4d4bce7a6f13  /tmp/timeboard-quality/ruff.tar.gz' | sha256sum --check
           tar -xzf /tmp/timeboard-quality/ruff.tar.gz -C /tmp/timeboard-quality/ruff --strip-components=1
           /tmp/timeboard-quality/ruff/ruff check scripts/release_metadata.py scripts/publish_release.py tests/test_release_metadata.py tests/test_community_files.py 2>&1 | tee audit-evidence/release-lint.txt
+          /tmp/timeboard-quality/ruff/ruff check app/mcp app/services tests/test_mcp.py tests/test_mcp_lifecycle.py scripts/mcp_browser_smoke.py scripts/benchmark_mcp.py 2>&1 | tee audit-evidence/mcp-lint.txt
           curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/microsoft/pyright/releases/download/1.1.414/pyright.tgz -o /tmp/timeboard-quality/pyright.tgz
           echo 'bf5f473f6167c0d14175492c3263d783b4489a6956e1c06c18e15228e3a3fa42  /tmp/timeboard-quality/pyright.tgz' | sha256sum --check
           tar -xzf /tmp/timeboard-quality/pyright.tgz -C /tmp/timeboard-quality/pyright --strip-components=1
@@ -80,6 +81,7 @@ jobs:
         run: |
           python -m playwright install --with-deps chromium
           python scripts/browser_smoke.py 2>&1 | tee audit-evidence/browser.txt
+          python scripts/mcp_browser_smoke.py 2>&1 | tee audit-evidence/mcp-browser.txt
       - name: Preserve exact-commit evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -98,6 +100,7 @@ jobs:
         run: |
           mkdir -p audit-evidence
           docker compose config -q
+          MCP_TEST_BASE_URL=https://timeboard-mcp.example docker compose -f docker-compose.mcp-test.yml config -q
           docker build --build-arg VCS_REF="$GITHUB_SHA" -t timeboardapp:audit . 2>&1 | tee audit-evidence/docker-build.txt
           test "$(docker image inspect timeboardapp:audit --format '{{.Config.User}}')" = '1000:1000'
           version="$(python -c 'import runpy; print(runpy.run_path("app/version.py")["APP_VERSION"])')"
@@ -115,6 +118,34 @@ jobs:
           test "$status" = healthy
           docker exec timeboard-audit python -c "import os,pathlib; assert os.getuid()==1000; assert pathlib.Path('/data/initial-admin-password.txt').stat().st_mode & 0o777 == 0o600"
           docker exec timeboard-audit python -c "import json,urllib.request; print(json.load(urllib.request.urlopen('http://127.0.0.1:8888/healthz')))" > audit-evidence/container-health.txt
+      - name: MCP-enabled container smoke
+        run: |
+          docker run -d --name timeboard-mcp-audit --mount type=volume,src=timeboard-mcp-audit-data,dst=/data --read-only --tmpfs /tmp:rw,noexec,nosuid,size=64m --cap-drop ALL --security-opt no-new-privileges -e TIMEBOARDAPP_MCP_ENABLED=true -e TIMEBOARDAPP_BASE_URL=https://timeboard-mcp.example timeboardapp:audit
+          for attempt in $(seq 1 30); do
+            status="$(docker inspect timeboard-mcp-audit --format '{{.State.Health.Status}}')"
+            test "$status" != unhealthy
+            if test "$status" = healthy; then break; fi
+            sleep 2
+          done
+          test "$status" = healthy
+          docker exec -i timeboard-mcp-audit python - <<'PY' > audit-evidence/container-mcp.txt
+          import json
+          import urllib.error
+          import urllib.request
+          base = 'http://127.0.0.1:8888'
+          with urllib.request.urlopen(base + '/.well-known/oauth-protected-resource/mcp', timeout=5) as response:
+              metadata = json.load(response)
+          assert metadata['resource'] == 'https://timeboard-mcp.example/mcp'
+          assert 'tasks:read' in metadata['scopes_supported']
+          try:
+              urllib.request.urlopen(base + '/mcp', timeout=5)
+          except urllib.error.HTTPError as error:
+              assert error.code == 401
+              assert 'resource_metadata=' in error.headers['WWW-Authenticate']
+          else:
+              raise AssertionError('Unauthenticated MCP access must fail')
+          print('PASS: MCP-enabled container startup, discovery, and authentication boundary')
+          PY
       - name: Container diagnostics
         if: always()
         run: |
@@ -122,6 +153,10 @@ jobs:
           docker inspect timeboard-audit > audit-evidence/container-inspect.json || true
           docker rm -f timeboard-audit || true
           docker volume rm timeboard-audit-data || true
+          docker logs timeboard-mcp-audit > audit-evidence/container-mcp-log.txt 2>&1 || true
+          docker inspect timeboard-mcp-audit > audit-evidence/container-mcp-inspect.json || true
+          docker rm -f timeboard-mcp-audit || true
+          docker volume rm timeboard-mcp-audit-data || true
       - name: Preserve container evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="row justify-content-center"><div class="col-12 col-md-7 col-lg-5">
+  <h1 class="h4 mb-3">Connect {{ client_name }}</h1>
+  {% if error %}<div class="alert alert-danger" role="alert">{{ error }}</div>{% endif %}
+  <div class="card card-body">
+    {% if not current_user %}
+    <p>Sign in to your Timeboard account to review this connection.</p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+      <input type="hidden" name="action" value="login">
+      <label class="form-label" for="username">Username or email</label>
+      <input class="form-control mb-3" id="username" name="username" maxlength="255" autocomplete="username" required>
+      <label class="form-label" for="password">Password</label>
+      <input class="form-control mb-3" id="password" type="password" name="password" maxlength="1024" autocomplete="current-password" required>
+      <button class="btn btn-primary" type="submit">Sign in</button>
+    </form>
+    {% else %}
+    <p>Allow this application to act as <strong>{{ current_user.username }}</strong>?</p>
+    <ul>{% for scope in requested_scopes %}<li>{{ scope }}</li>{% endfor %}</ul>
+    <p>Task changes can trigger your existing notifications and recurring tasks. You can disconnect this application from your profile.</p>
+    <p class="small text-muted">Return address: <span class="text-break">{{ redirect_uri }}</span></p>
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ request.session.get('csrf_token', '') }}">
+      <button class="btn btn-primary" name="action" value="approve" type="submit">Allow access</button>
+      <button class="btn btn-outline-secondary" name="action" value="deny" type="submit">Cancel</button>
+    </form>
+    {% endif %}
+  </div>
+</div></div>
+{% endblock %}
