@@ -121,6 +121,13 @@ def main():
                             time.sleep(0.2)
                     else:
                         raise RuntimeError("Disposable MCP server did not become ready")
+                    discovery = context.request.get(
+                        "/.well-known/oauth-authorization-server"
+                    )
+                    assert discovery.status == 200
+                    metadata = discovery.json()
+                    assert metadata["authorization_response_iss_parameter_supported"] is True
+                    assert metadata["issuer"] == BASE + "/"
                     password = (work / "initial-admin-password.txt").read_text().strip()
                     reg = context.request.post(
                         "/register",
@@ -197,6 +204,7 @@ def main():
                     page.wait_for_url(CALLBACK + "*")
                     callback = parse_qs(urlsplit(page.url).query)
                     assert callback["state"] == ["local-browser-smoke"]
+                    assert callback["iss"] == [metadata["issuer"]]
                     token = context.request.post(
                         BASE + "/token",
                         form={

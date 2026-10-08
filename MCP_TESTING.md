@@ -1,6 +1,6 @@
 # Native MCP setup and testing
 
-Source release 00.14.00 includes an experimental native MCP server for ChatGPT in the existing FastAPI application. It uses the official Python MCP SDK 2.2.0, Streamable HTTP at `/mcp`, and Timeboard accounts for individual OAuth authorization. MCP is disabled by default. No OpenAI API key is needed. The release includes automated protocol and browser coverage; live ChatGPT acceptance has not been completed. Existing private GPT Actions continue to work through their separate interface.
+Source release 00.14.01 includes the experimental native MCP server introduced in 00.14.00 and adds RFC 9207 authorization-response issuer identification for ChatGPT callbacks. It uses the official Python MCP SDK 2.2.0, Streamable HTTP at `/mcp`, and Timeboard accounts for individual OAuth authorization. MCP is disabled by default. No OpenAI API key is needed. The release includes automated protocol and browser coverage; live ChatGPT acceptance has not been completed. Existing private GPT Actions continue to work through their separate interface.
 
 ## Enable MCP on an existing Docker deployment
 
@@ -8,12 +8,12 @@ Use the checkout containing your Dockerfile and Compose file. Before updating, t
 
 ```sh
 git fetch origin --tags
-git switch --detach v00.14.00
+git switch --detach v00.14.01
 ```
 
 To follow current `main` instead of the release tag, use `git switch main` and `git pull --ff-only origin main`. The v00.13.02 tag predates native MCP; rebuilding that tag will not add the feature. No prebuilt registry image is published by this source-release workflow. Build from the selected source checkout.
 
-With the 00.14.00 Compose file, set these entries in your existing `.env`:
+With the 00.14.01 Compose file, set these entries in your existing `.env`:
 
 ```dotenv
 TIMEBOARDAPP_BASE_URL=https://tasks.example.com
@@ -48,7 +48,7 @@ curl -fsS https://tasks.example.com/.well-known/oauth-authorization-server
 curl -i https://tasks.example.com/mcp
 ```
 
-The health response should identify 00.14.00 for this release. Both discovery requests should return HTTP 200 with JSON naming your HTTPS origin. An unauthenticated `/mcp` request should return **401 Unauthorized** with `WWW-Authenticate`; this is expected and confirms authentication is required. A 404 usually means MCP is disabled, the running image predates it, or the proxy is routing to the wrong application. A startup failure reports invalid settings in the container logs. Do not treat a 200 HTML proxy/login page as successful discovery.
+The health response should identify 00.14.01 for this release. Both discovery requests should return HTTP 200 with JSON naming your HTTPS origin. Authorization-server metadata must include `authorization_response_iss_parameter_supported: true`. Approval, cancellation, and authorization-error callbacks include one `iss` parameter equal to the metadata issuer, including its trailing slash. The old `v00.14.00` tag does not contain this correction. An unauthenticated `/mcp` request should return **401 Unauthorized** with `WWW-Authenticate`; this is expected and confirms authentication is required. A 404 usually means MCP is disabled, the running image predates it, or the proxy is routing to the wrong application. A startup failure reports invalid settings in the container logs. Do not treat a 200 HTML proxy/login page as successful discovery.
 
 Continue with [Connect ChatGPT](#connect-chatgpt). For an initial trial with disposable data, use the isolated deployment below instead.
 
@@ -57,7 +57,7 @@ Continue with [Connect ChatGPT](#connect-chatgpt). For an initial trial with dis
 Use synthetic tasks and users with a separate database. The standalone Compose file uses its own image tag, loopback port 18888, and data subdirectory. Docker and an HTTPS reverse proxy are prerequisites.
 
 ```sh
-git clone --branch v00.14.00 https://github.com/paulkakell/timeboardapp.git timeboardapp-mcp
+git clone --branch v00.14.01 https://github.com/paulkakell/timeboardapp.git timeboardapp-mcp
 cd timeboardapp-mcp
 export MCP_TEST_BASE_URL=https://timeboard-test.example.com
 # Match these IDs to the private data directory's owner.
@@ -77,14 +77,50 @@ For a non-container checkout, follow CONTRIBUTING.md's isolated environment setu
 ## Connect ChatGPT
 
 1. In ChatGPT, open **Plugins → + → Add custom MCP server**.
-2. Supply `https://timeboard-test.example.com/mcp` as the remote MCP URL, substituting your actual hostname, choose **OAuth**, and select **Create as a plugin**. The server publishes resource and authorization-server metadata and supports dynamic client registration. No manually copied Timeboard bearer token is needed.
-3. The default callback allowlist contains `https://chatgpt.com/connector_platform_oauth_redirect`. If your ChatGPT setup displays a different callback, copy that exact URI into `MCP_TEST_REDIRECT_URIS` or `mcp.allowed_redirect_uris` and restart before registering the client. Never configure a wildcard. Changing the allowlist can invalidate existing clients.
+2. Supply `https://timeboard-test.example.com/mcp` as the remote MCP URL, substituting your actual hostname, choose **OAuth** with **Dynamic Client Registration (DCR)** when a registration-method choice is shown, and select **Create as a plugin**. Leave manual client credentials empty for DCR; do not use a Timeboard password, signing key, or GPT Actions token. The server publishes resource and authorization-server metadata and supports dynamic client registration. No manually copied Timeboard bearer token is needed.
+3. Version 00.14.01 implements and advertises issuer identification, which OpenAI documents as enabling the stable callback for eligible new connections. The default callback allowlist contains `https://chatgpt.com/connector_platform_oauth_redirect`. Existing connections may retain a callback-specific URI; preserve those exact URLs when changing overrides. For a regular custom Compose deployment, pass `TIMEBOARDAPP_MCP_REDIRECT_URIS` explicitly when overriding the allowlist. If your ChatGPT setup displays a different callback, copy that exact URI into `MCP_TEST_REDIRECT_URIS` or `mcp.allowed_redirect_uris` and restart before registering the client. Never configure a wildcard. Changing the allowlist can invalidate existing clients.
 4. Complete the Timeboard sign-in and review the consent page. It names the account, requested permissions, and callback. Approval issues a short-lived authorization code with S256 PKCE; cancellation returns `access_denied`.
 5. Open a new conversation, select the plugin using `@`, and ask it to identify your account, list your tasks, and create one disposable task. Review write confirmations and returned results. Disconnect it in TimeboardApp through **Profile → Connected applications** and confirm further calls fail.
 
 Account availability and workspace policy may restrict custom plugins. Successful local tests do not prove live ChatGPT acceptance, public TLS correctness, or directory approval. This release has no embedded ChatGPT UI widget or public-directory submission.
 
 Official references: [build an MCP server](https://developers.openai.com/plugins/build/mcp-server), [authentication](https://developers.openai.com/plugins/build/auth), and [connect from ChatGPT](https://developers.openai.com/plugins/deploy/connect-chatgpt).
+
+## Troubleshoot a ChatGPT connection
+
+Keep TLS verification and OAuth enabled. A generic creation error alone does not
+identify the rejected setting. Diagnose the stages separately:
+
+1. Confirm the public origin has a current, publicly trusted certificate and no
+   proxy login wall on discovery or machine OAuth paths. Test without cookies.
+2. Confirm both discovery endpoints return JSON, not an HTML login page. Check
+   the issuer-support flag and exact `/mcp` resource. A bare `/mcp` request should
+   return 401 with `WWW-Authenticate`; that is expected before authorization.
+3. During one ChatGPT attempt, inspect the reverse-proxy/application request paths
+   and status codes. If discovery succeeds but `POST /register` fails, inspect
+   its error description and requested callback. A diagnostic registration using
+   the stable callback does not prove ChatGPT requested that same callback.
+4. `invalid_redirect_uri` requires the exact callback to be allowed. Add it to
+   `mcp.allowed_redirect_uris` or a passed-through `TIMEBOARDAPP_MCP_REDIRECT_URIS`
+   override, preserve callbacks already in use, and recreate the container for
+   environment changes. Never use wildcards. Recreating a ChatGPT connection may
+   be needed after a server upgrade; do not assume a failed draft refreshes its
+   cached settings.
+
+Windows Command Prompt checks (replace the hostname):
+
+```cmd
+curl.exe -q -fsS --connect-timeout 10 --max-time 20 "https://tasks.example.com/healthz"
+curl.exe -q -fsS --connect-timeout 10 --max-time 20 "https://tasks.example.com/.well-known/oauth-protected-resource/mcp"
+curl.exe -q -fsS --connect-timeout 10 --max-time 20 "https://tasks.example.com/.well-known/oauth-authorization-server"
+curl.exe -q -sS -i --connect-timeout 10 --max-time 20 "https://tasks.example.com/mcp"
+```
+
+Do not use `-k` or `--insecure`. Redact `Set-Cookie`, authorization headers,
+authorization codes, and tokens before sharing output. If creation fails before
+server requests appear, capture only the relevant redacted browser Network
+response, not an unredacted HAR. Manual client credentials require an actually
+registered OAuth client; they are not a workaround for failed discovery.
 
 ## Tools and access
 

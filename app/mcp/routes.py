@@ -29,6 +29,11 @@ from starlette.routing import Route
 
 from ..auth import authenticate_user, credential_fingerprint, session_user
 from .auth import SCOPE_LABELS, SCOPES, digest
+from .issuer import (
+    authorization_issuer,
+    identify_authorization_responses,
+    with_issuer_parameter,
+)
 from .models import MCPConnection, MCPGrant
 
 
@@ -95,6 +100,7 @@ def normalize_basic_client_id(app):
 
 
 def protocol_routes(provider):
+    issuer = authorization_issuer(provider.issuer)
     routes = create_auth_routes(
         provider,
         issuer_url=AnyHttpUrl(provider.issuer),
@@ -103,6 +109,8 @@ def protocol_routes(provider):
         ),
         revocation_options=RevocationOptions(enabled=True),
     )
+    authorize_route = next(r for r in routes if r.path == "/authorize")
+    authorize_route.app = identify_authorization_responses(authorize_route.app, issuer)
     token_route = next(r for r in routes if r.path == "/token")
     original_token_app = token_route.app
 
@@ -151,7 +159,8 @@ def protocol_routes(provider):
             RevocationOptions(enabled=True),
         ).model_dump(mode="json", exclude_none=True)
         # Keep the exact canonical issuer advertised in resource discovery.
-        result["issuer"] = str(AnyHttpUrl(provider.issuer))
+        result["issuer"] = issuer
+        result["authorization_response_iss_parameter_supported"] = True
         result["token_endpoint_auth_methods_supported"] = [
             "none",
             "client_secret_post",
@@ -223,6 +232,7 @@ def protocol_routes(provider):
 
 def browser_router(provider):
     router = APIRouter(include_in_schema=False)
+    issuer = authorization_issuer(provider.issuer)
 
     def pending(db, request_id, request):
         if not re.fullmatch(r"[A-Za-z0-9_-]{43}", request_id):
@@ -365,7 +375,7 @@ def browser_router(provider):
                         str(params.redirect_uri), code=code, state=params.state
                     )
                 return RedirectResponse(
-                    target,
+                    with_issuer_parameter(target, issuer),
                     status_code=303,
                     headers={
                         "Cache-Control": "no-store",
