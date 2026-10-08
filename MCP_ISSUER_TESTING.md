@@ -2,8 +2,11 @@
 
 Branch: `fix/mcp-oauth-issuer-identification`.
 Base: `4d4f9e01351cfd48c31e3cae3da01476b3ae5aa1` (source release `00.14.00`).
-This is an unreleased compatibility fix. The `v00.14.00` tag does not include it;
-the application version is intentionally unchanged until a release is requested.
+Testing prerelease: `mcp-issuer-test.1`, published only after the branch's full
+Python 3.12/3.13 and container CI gates pass. The `v00.14.00` tag does not include
+this fix and is not moved. The application still reports base version `00.14.00`;
+use the preview tag, commit and `PREVIEW_MANIFEST.json` to identify this source.
+This is not the next stable release, a registry image or a server deployment.
 
 ## Changes and compatibility
 
@@ -42,16 +45,31 @@ directory, HTTPS hostname, and container. Do not copy live OAuth state or use th
 production database. In the isolated checkout:
 
 ```sh
-git fetch origin fix/mcp-oauth-issuer-identification
-git switch --detach origin/fix/mcp-oauth-issuer-identification
+git fetch origin tag mcp-issuer-test.1
+git switch --detach mcp-issuer-test.1
 MCP_TEST_BASE_URL=https://timeboard-test.example.com \
   docker compose -p timeboard-issuer-test -f docker-compose.mcp-test.yml up -d --build
 ```
 
 Set `MCP_TEST_DATA` to an unused private directory if the default already contains
 another test instance. Follow the existing guide's ownership, TLS, reverse-proxy,
-credential-reset, and backup precautions. Pushing a branch does not update a
-running container, and rebuilding `v00.14.00` does not include this fix.
+credential-reset, and backup precautions. Publishing this source does not update a running container. Rebuilding
+`v00.14.00` does not include this fix.
+
+For an existing custom Compose deployment, back up the complete database and
+settings consistently, retain the previous image, and preserve the existing data
+path and environment. Change only the image/build source entries:
+
+```yaml
+    image: timeboardapp:mcp-issuer-test.1
+    build:
+      context: "https://github.com/paulkakell/timeboardapp.git#mcp-issuer-test.1"
+      dockerfile: Dockerfile
+```
+
+Then run `docker compose up -d --build --force-recreate timeboardapp` on the Docker
+host in its existing Compose directory. An isolated test instance is preferred.
+Never replace the live data directory with an empty directory to test an upgrade.
 
 From Windows Command Prompt, substitute the actual test hostname:
 
@@ -89,9 +107,19 @@ container, public TLS, or live ChatGPT acceptance tests.
 ## Rollback and scope
 
 Stop the isolated test project without deleting its data and rebuild the prior
-verified source when required. This branch has no database migration, main-branch
-merge, release publication, or production rollout. Source rollback does not undo
+verified source when required. This preview has no database migration, main-branch
+merge, stable release publication, or production rollout. Source rollback does not undo
 live task changes.
+
+## Preview publication controls
+
+The existing CI remains read-only during tests. Only the branch-specific preview
+job receives `contents: write`, after the Python matrix and container jobs pass.
+The publisher checks the exact workflow commit, branch, event and completed jobs,
+packages tracked source, and marks the release as a prerelease, never Latest.
+The fixed preview tag cannot be moved or overwritten by later commits. A new
+preview requires a new reviewed tag. Main's existing stable-release gate and
+version metadata remain unchanged. PR and fork runs cannot publish previews.
 
 ## References
 

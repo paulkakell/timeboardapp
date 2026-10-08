@@ -1,7 +1,7 @@
 name: CI
 on:
   push:
-    branches: [main]
+    branches: [main, fix/mcp-oauth-issuer-identification]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -202,3 +202,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/publish_release.py
+  mcp-preview:
+    name: Publish OAuth testing prerelease
+    needs: [regression, container]
+    if: github.repository == 'paulkakell/timeboardapp' && github.ref == 'refs/heads/fix/mcp-oauth-issuer-identification' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Publish exact-commit source preview without replacing the stable release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python scripts/publish_mcp_preview.py
