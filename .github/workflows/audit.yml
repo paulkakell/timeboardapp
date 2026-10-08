@@ -1,7 +1,7 @@
 name: CI
 on:
   push:
-    branches: [main, fix/mcp-oauth-issuer-identification]
+    branches: [main]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -58,7 +58,7 @@ jobs:
           echo '1bfbb819b5d4f9af501748862276b60e412d336034d99387691a4d4bce7a6f13  /tmp/timeboard-quality/ruff.tar.gz' | sha256sum --check
           tar -xzf /tmp/timeboard-quality/ruff.tar.gz -C /tmp/timeboard-quality/ruff --strip-components=1
           /tmp/timeboard-quality/ruff/ruff check scripts/release_metadata.py scripts/publish_release.py tests/test_release_metadata.py tests/test_community_files.py 2>&1 | tee audit-evidence/release-lint.txt
-          /tmp/timeboard-quality/ruff/ruff check app/mcp app/services tests/test_mcp.py tests/test_mcp_lifecycle.py scripts/mcp_browser_smoke.py scripts/benchmark_mcp.py 2>&1 | tee audit-evidence/mcp-lint.txt
+          /tmp/timeboard-quality/ruff/ruff check app/mcp app/services tests/test_mcp.py tests/test_mcp_issuer.py tests/test_mcp_issuer_unit.py tests/test_mcp_lifecycle.py scripts/mcp_browser_smoke.py scripts/benchmark_mcp.py 2>&1 | tee audit-evidence/mcp-lint.txt
           curl --fail --silent --show-error --location --proto '=https' --tlsv1.2 https://github.com/microsoft/pyright/releases/download/1.1.414/pyright.tgz -o /tmp/timeboard-quality/pyright.tgz
           echo 'bf5f473f6167c0d14175492c3263d783b4489a6956e1c06c18e15228e3a3fa42  /tmp/timeboard-quality/pyright.tgz' | sha256sum --check
           tar -xzf /tmp/timeboard-quality/pyright.tgz -C /tmp/timeboard-quality/pyright --strip-components=1
@@ -138,6 +138,11 @@ jobs:
               metadata = json.load(response)
           assert metadata['resource'] == 'https://timeboard-mcp.example/mcp'
           assert 'tasks:read' in metadata['scopes_supported']
+          with urllib.request.urlopen(base + '/.well-known/oauth-authorization-server', timeout=5) as response:
+              authorization = json.load(response)
+          assert authorization['authorization_response_iss_parameter_supported'] is True
+          assert metadata['authorization_servers'] == [authorization['issuer']]
+          assert authorization['issuer'] == 'https://timeboard-mcp.example/'
           try:
               urllib.request.urlopen(base + '/mcp', timeout=5)
           except urllib.error.HTTPError as error:
@@ -202,22 +207,3 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python scripts/publish_release.py
-  mcp-preview:
-    name: Publish OAuth testing prerelease
-    needs: [regression, container]
-    if: github.repository == 'paulkakell/timeboardapp' && github.ref == 'refs/heads/fix/mcp-oauth-issuer-identification' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    permissions:
-      contents: write
-      actions: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          persist-credentials: false
-          fetch-depth: 0
-      - name: Publish exact-commit source preview without replacing the stable release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: python scripts/publish_mcp_preview.py
