@@ -2,19 +2,22 @@
 
 A self-hosted task board with recurrence, nested subtasks, calendar and mobile views, tags, manager assignment, task following, notifications, and administrator tools. FastAPI, Jinja, SQLAlchemy/SQLite, and APScheduler power the application.
 
-**Source version:** `00.13.02`. This patch adds community guidelines and contribution templates, and fixes release publication after ordinary main-branch pushes; it introduces no new application compatibility changes. Upgrades from versions before 00.13.00 still require the documented authentication/deployment migration. Read [release notes](RELEASE_NOTES_00.13.02.md) and [versioning guidance](VERSIONING.md) before upgrading. A source release does not automatically upgrade existing application deployments.
+**Source version:** `00.14.00` (2026-10-08). This release adds an experimental native MCP endpoint with per-user OAuth for ChatGPT, eleven account/task/assignment tools, and connection controls. MCP is disabled by default. Existing private GPT Actions remain available. Upgrades from versions before 00.13.00 still require the documented authentication/deployment migration. Read [release notes](RELEASE_NOTES_00.14.00.md) and [versioning guidance](VERSIONING.md) before upgrading. A source release does not automatically upgrade existing application deployments or publish a container-registry image.
 
 <!-- release-badges:start -->
-[![Source version 00.13.02](docs/assets/badges/version.svg)](https://github.com/paulkakell/timeboardapp/releases/tag/v00.13.02)
+[![Source version 00.14.00](docs/assets/badges/version.svg)](https://github.com/paulkakell/timeboardapp/releases/tag/v00.14.00)
 [![CI on main](https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml/badge.svg?branch=main&event=push)](https://github.com/paulkakell/timeboardapp/actions/workflows/audit.yml?query=branch%3Amain)
 [![Tested Python 3.12 and 3.13](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](https://github.com/paulkakell/timeboardapp/blob/main/.github/workflows/audit.yml)
 [![MIT license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/paulkakell/timeboardapp/blob/main/LICENSE)
 [![Private GPT Actions](https://img.shields.io/badge/ChatGPT-private%20GPT%20Actions-blue)](https://timeboardapp.com/docs/chatgpt.html)
+[![Native MCP (opt-in)](https://img.shields.io/badge/MCP-opt--in-blue)](https://timeboardapp.com/docs/chatgpt.html#native-mcp)
 <!-- release-badges:end -->
 
 ## Start locally
 
 ```sh
+git clone --branch v00.14.00 https://github.com/paulkakell/timeboardapp.git
+cd timeboardapp
 cp .env.example .env
 # Linux example: match PUID and PGID in .env.
 sudo install -d -m 700 -o 1000 -g 1000 data
@@ -28,9 +31,11 @@ Compose now has a stable `timeboardapp` service, defaults to loopback exposure, 
 
 ## Configuration and upgrades
 
-`TIMEBOARDAPP_SETTINGS` defaults to `/data/settings.yml`. `TIMEBOARDAPP_BASE_URL` sets the public application origin, for example `https://tasks.example.com`; it is required for password-reset links and the private GPT schema. Set application display time in `app.timezone`; container `TZ` alone does not change it. Email, logging, WNS, and backup settings are database-backed administrator settings, seeded from legacy YAML where applicable.
+`TIMEBOARDAPP_SETTINGS` defaults to `/data/settings.yml`. `TIMEBOARDAPP_BASE_URL` sets the public application origin, for example `https://tasks.example.com`; it is required for password-reset links, the private GPT schema, and native MCP. MCP requires publicly trusted HTTPS with no path prefix. Set application display time in `app.timezone`; container `TZ` alone does not change it. Email, logging, WNS, and backup settings are database-backed administrator settings, seeded from legacy YAML where applicable.
 
-The source uses Argon2id for new passwords, with transparent migration from existing PBKDF2-SHA256 hashes on successful login. Existing JWTs/browser sessions are invalidated by the upgrade; sign in again. Password changes/resets invalidate issued credentials. An old-image rollback also needs the matching pre-upgrade database/settings snapshot because the old password library cannot read migrated Argon2id hashes. Back up and test restoration before updating production.
+Before upgrading, back up the full SQLite database and settings consistently and retain the previous source/image. In your existing checkout, fetch tags and select the release with `git fetch origin --tags` and `git switch --detach v00.14.00`, then run `docker compose up -d --build --force-recreate`. To follow current source instead, use `git switch main` and `git pull --ff-only origin main` before rebuilding. Preserve local configuration and review local edits before changing revisions. Compose builds the image locally from the checkout; `docker compose pull` or a container restart alone does not install this source release. The [MCP setup guide](MCP_TESTING.md#enable-mcp-on-an-existing-docker-deployment) covers enabling it on an existing deployment.
+
+Since 00.13.00, the source uses Argon2id for new passwords, with transparent migration from existing PBKDF2-SHA256 hashes on successful login. Upgrades from before 00.13.00 invalidate existing JWTs/browser sessions; sign in again. Password changes/resets invalidate issued credentials. A rollback to a pre-00.13.00 image also needs the matching pre-upgrade database/settings snapshot because the old password library cannot read migrated Argon2id hashes. Back up and test restoration before updating production.
 
 ## API and ChatGPT
 
@@ -38,7 +43,7 @@ The deployed application provides `/docs` and `/openapi.json`. Task listings are
 
 The separate private GPT Actions interface exposes eight owner-only task operations at `/api/chatgpt`. Create a revocable read-only token by default through `POST /api/integrations/tokens`, then use API-key/Bearer authentication in a **private** custom GPT. Import `/openapi-chatgpt.json` from the HTTPS application deployment. Tokens are shown once, hashed at rest, scoped, expiring, and unable to access administrator APIs. An administrator's integration token still accesses only that administrator's own tasks.
 
-This testing branch also adds an **experimental native MCP endpoint** at `/mcp`, with individual OAuth consent, eleven task/account/assignment tools, and profile controls to disconnect applications. It is disabled by default and is not part of the published 00.13.02 release. Use the [isolated MCP testing guide](MCP_TESTING.md) and its separate Compose deployment. Existing private GPT Actions continue to use their existing interface.
+Version 00.14.00 includes an **experimental native MCP endpoint** at `/mcp`, with individual OAuth consent, eleven task/account/assignment tools, and profile controls to disconnect applications. It is disabled by default. Set `TIMEBOARDAPP_MCP_ENABLED=true` and `TIMEBOARDAPP_BASE_URL=https://tasks.example.com` in `.env` when using this release's Compose file, then recreate the container. A nonempty MCP environment flag overrides `mcp.enabled` in settings YAML; an empty or omitted flag preserves that setting. For custom Compose files, explicitly pass the variables under the service's `environment` block. Follow the [MCP setup and testing guide](MCP_TESTING.md), including its separate deployment for isolated tests. Existing private GPT Actions continue to use their existing interface.
 
 A real ChatGPT/TLS acceptance test remains necessary; local protocol tests do not establish live account compatibility. This application does not serve OpenAI models. Never place access tokens in a GPT prompt, public schema, or source file.
 
@@ -68,7 +73,7 @@ The CI workflow validates Python 3.12/3.13, security regressions, the actual gen
 
 ## Documentation and audit
 
-The static website source is `docs/`. It is not the private application API. `scripts/sync_docs.py` generates route/package reference data and the sitemap; `scripts/release_metadata.py` synchronizes source version, release links, and badges; CI checks consistency and internal links. Main navigation includes the new ChatGPT guide. No production website publication or application rollout is implied by a source change.
+The static website source is `docs/`. It is not the private application API. `scripts/sync_docs.py` generates route/package reference data and the sitemap; `scripts/release_metadata.py` synchronizes source version, release links, and badges; CI checks consistency and internal links. The ChatGPT guide documents native MCP and private GPT Actions. Website publication and application rollout are separate from a source release.
 
 See [the audit and feature decision tree](AUDIT_REPORT.md), [security policy](SECURITY.md), and [website documentation](docs/README.md). Historical release and validation reports remain as historical records. Only verified unreferenced icon aliases were removed.
 
@@ -82,4 +87,4 @@ Every main-branch push still runs the complete CI checks. A read-only release-in
 
 Read the [Code of Conduct](CODE_OF_CONDUCT.md) and [Contributing Guidelines](CONTRIBUTING.md) before participating. The [issue chooser](https://github.com/paulkakell/timeboardapp/issues/new/choose) provides bug, feature, and documentation forms. Pull requests use the [review template](.github/pull_request_template.md). The [community guide](docs/docs/community.html) links these policies without duplicating them.
 
-Report vulnerabilities through [SECURITY.md](SECURITY.md), and use the conduct policy's reporting routes for behavior concerns. Do not put credentials, private tasks, or incident details in public reports. GitHub begins offering the new templates once they are merged into the default branch.
+Report vulnerabilities through [SECURITY.md](SECURITY.md), and use the conduct policy's reporting routes for behavior concerns. Do not put credentials, private tasks, or incident details in public reports.

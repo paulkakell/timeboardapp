@@ -100,6 +100,7 @@ jobs:
         run: |
           mkdir -p audit-evidence
           docker compose config -q
+          TIMEBOARDAPP_MCP_ENABLED=true docker compose config --format json | python -c "import json,sys; assert json.load(sys.stdin)['services']['timeboardapp']['environment']['TIMEBOARDAPP_MCP_ENABLED'] == 'true'"
           MCP_TEST_BASE_URL=https://timeboard-mcp.example docker compose -f docker-compose.mcp-test.yml config -q
           docker build --build-arg VCS_REF="$GITHUB_SHA" -t timeboardapp:audit . 2>&1 | tee audit-evidence/docker-build.txt
           test "$(docker image inspect timeboardapp:audit --format '{{.Config.User}}')" = '1000:1000'

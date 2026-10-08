@@ -43,7 +43,7 @@ body:
     id: proposal
     attributes:
       label: Proposed behavior
-      description: Describe the smallest useful change. Distinguish private GPT Actions from a new MCP or OAuth integration when relevant.
+      description: Describe the smallest useful change. Distinguish private GPT Actions from native MCP with per-user OAuth when relevant.
     validations:
       required: true
   - type: textarea

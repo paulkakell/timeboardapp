@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='timeboard-browser-') as raw:
                 page.locator('input[name=password]').fill(password)
                 page.get_by_role('button',name='Sign in').click()
                 page.wait_for_url('**/dashboard')
-                for path in ['/dashboard','/calendar','/archived','/profile','/profile/notifications','/admin/users','/admin/database','/admin/email','/admin/notifications','/admin/logs','/admin/validation']:
+                for path in ['/dashboard','/calendar','/archived','/profile','/profile/notifications','/admin/users','/admin/database','/admin/email','/admin/notifications','/admin/logs','/admin/validation','/help']:
                     result = page.goto(path)
                     assert result and result.status == 200, path
                     assert page.locator('meta[name=csrf-token]').get_attribute('content'), path
@@ -68,7 +68,7 @@ with tempfile.TemporaryDirectory(prefix='timeboard-browser-') as raw:
                 page.wait_for_url('**/login')
                 assert not errors, '\n'.join(errors)
                 browser.close()
-            print('PASS: Chromium login, 11 authenticated pages, task creation, calendar views/preferences, mobile viewport, and CSRF-protected logout')
+            print('PASS: Chromium login, 12 authenticated pages including help, task creation, calendar views/preferences, mobile viewport, and CSRF-protected logout')
         finally:
             process.terminate()
             try: process.wait(timeout=10)

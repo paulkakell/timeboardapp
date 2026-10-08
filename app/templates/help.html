@@ -33,6 +33,76 @@
 
 <hr>
 
+<h2 id="chatgpt">ChatGPT</h2>
+
+<p>
+  TimeboardApp 00.14.00 includes an <strong>experimental native MCP connection</strong> for ChatGPT.
+  Each person signs in with their own TimeboardApp account and approves the requested permissions.
+  MCP is disabled by default; an administrator must enable it on a publicly reachable HTTPS installation.
+</p>
+{% if mcp_enabled %}
+<p class="alert alert-info" role="status">
+  Native MCP is enabled on this installation. You can review approved applications under
+  <a href="/profile/connections">Profile → Connected applications</a>.
+</p>
+{% else %}
+<p class="alert alert-secondary" role="status">
+  Native MCP is disabled on this installation. Ask your administrator to enable it before connecting ChatGPT.
+  The MCP endpoint and connection-management page are unavailable while it is disabled.
+</p>
+{% endif %}
+
+<h3>Connect your account</h3>
+<ol>
+  <li>Ask your administrator for this installation's public MCP address, such as <code>https://tasks.example.com/mcp</code>.</li>
+  <li>In ChatGPT, open <strong>Plugins → + → Add custom MCP server</strong>. Enter that address, choose <strong>OAuth</strong>, and create the plugin. Availability depends on your ChatGPT account and workspace settings.</li>
+  <li>Sign in on the TimeboardApp page. Check the account name and requested permissions, then select <strong>Allow access</strong>, or <strong>Cancel</strong> to decline.</li>
+  <li>Start a new ChatGPT conversation and select the plugin with <code>@</code>. Ask it to identify your account and list your tasks before creating a disposable test task.</li>
+</ol>
+<p>
+  You do not need an OpenAI API key or a copied TimeboardApp API token. If ChatGPT displays a callback address
+  that the server rejects, give the exact address to your administrator so they can configure it and restart the service.
+  Administrator setup and troubleshooting are in the <a href="https://timeboardapp.com/docs/chatgpt.html">ChatGPT integration guide</a>.
+</p>
+
+<h3>Permissions and task changes</h3>
+<p>The connection offers eleven tools, subject to the permissions shown on the consent page:</p>
+<div class="table-responsive">
+  <table class="table table-striped">
+    <caption>Native MCP permissions</caption>
+    <thead><tr><th scope="col">Permission</th><th scope="col">What it allows</th></tr></thead>
+    <tbody>
+      <tr><th scope="row"><code>tasks:read</code></th><td>Identify your account, list or search your tasks, read a task, and summarize your task counts.</td></tr>
+      <tr><th scope="row"><code>tasks:write</code></th><td>Create, update, complete, archive, and restore your tasks.</td></tr>
+      <tr><th scope="row"><code>users:read</code></th><td>List eligible assignees by username and ID.</td></tr>
+      <tr><th scope="row"><code>tasks:assign</code></th><td>Transfer an active standalone task you own to an eligible assignee.</td></tr>
+    </tbody>
+  </table>
+</div>
+<ul>
+  <li><strong>Your account's tasks only:</strong> even administrator connections cannot read or change another person's tasks through MCP. Read-only permission does not allow changes.</li>
+  <li><strong>Assignment:</strong> you can assign to yourself or eligible subordinates; administrators can assign to any user. Tasks in a parent/subtask tree cannot be transferred. After a transfer, the former owner loses MCP access to the task, existing followers are removed, and the recipient receives an in-app notification.</li>
+  <li><strong>Existing task rules apply:</strong> changes can send configured notifications, and completing a recurring task can create its next occurrence. Resolve open subtasks in TimeboardApp before completing the parent.</li>
+  <li><strong>Check results:</strong> review the task and intended changes before approving a write. If a response is interrupted, ask ChatGPT to check the task's current state before trying again.</li>
+</ul>
+
+<h3>Disconnect an application</h3>
+<p>
+  Open <strong>Profile → Connected applications → Manage connections</strong>, review the application's permissions,
+  and select <strong>Disconnect</strong>. This immediately stops its access to your account. Reconnect and approve
+  access again if you want to use it later. Changing your TimeboardApp password also invalidates existing MCP connections.
+</p>
+
+<h3>Existing private GPT Actions</h3>
+<p>
+  Private GPT Actions remain available separately, with eight task operations at <code>/api/chatgpt</code>.
+  They use a scoped integration token and the <code>/openapi-chatgpt.json</code> schema instead of MCP OAuth.
+  Existing Actions configurations keep working when MCP is disabled. Their tokens are managed separately;
+  disconnecting an MCP application does not revoke an Actions token.
+</p>
+
+<hr>
+
 <h2>Notifications</h2>
 
 <p>

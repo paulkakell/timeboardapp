@@ -49,6 +49,7 @@ def badges(*, markdown: bool = False) -> str:
         (f"Tested Python {' and '.join(data['python_versions'])}", f"https://img.shields.io/badge/python-{quote(python_versions, safe='')}-blue", f"{REPO}/blob/main/.github/workflows/audit.yml"),
         ("MIT license", "https://img.shields.io/badge/license-MIT-blue", f"{REPO}/blob/main/LICENSE"),
         ("Private GPT Actions", "https://img.shields.io/badge/ChatGPT-private%20GPT%20Actions-blue", "https://timeboardapp.com/docs/chatgpt.html"),
+        ("Native MCP (opt-in)", "https://img.shields.io/badge/MCP-opt--in-blue", "https://timeboardapp.com/docs/chatgpt.html#native-mcp"),
     ]
     if markdown:
         content = "\n".join(f"[![{label}]({image})]({link})" for label, image, link in items)
