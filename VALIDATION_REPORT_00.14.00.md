@@ -1,6 +1,6 @@
 # Validation scope for 00.14.00
 
-This release packages the merged native MCP/OAuth feature and dependency updates, exposes the enable flag in regular Compose, and updates version identity, application help, operator documentation, and the website. Publication is gated on checks of the exact release source. Use the final release PR and the workflow referenced in `RELEASE_MANIFEST.json` for executed results, commit identity, and artifacts.
+This release packages the merged native MCP/OAuth feature and dependency updates, exposes the enable flag in regular Compose, and updates version identity, application help, operator documentation, and the website. Publication is gated on checks of the exact release source. Use [release PR #37](https://github.com/paulkakell/timeboardapp/pull/37) and the workflow referenced in `RELEASE_MANIFEST.json` for executed results, commit identity, and artifacts.
 
 ## Baseline evidence
 

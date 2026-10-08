@@ -1,6 +1,6 @@
 # TimeboardApp 00.14.00
 
-Date: October 8, 2026. Release tag: `v00.14.00`. Previous published release: `v00.13.02`. Classification: additive feature release. Native MCP implementation: PR #34; dependency updates: PRs #35 and #36.
+Date: October 8, 2026. Release tag: `v00.14.00`. Previous published release: `v00.13.02`. Classification: additive feature release. Release PR: #37. Native MCP implementation: PR #34; dependency updates: PRs #35 and #36.
 
 ## Native ChatGPT integration
 
