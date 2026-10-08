@@ -82,6 +82,7 @@ jobs:
           python -m playwright install --with-deps chromium
           python scripts/browser_smoke.py 2>&1 | tee audit-evidence/browser.txt
           python scripts/mcp_browser_smoke.py 2>&1 | tee audit-evidence/mcp-browser.txt
+          python scripts/site_smoke.py 2>&1 | tee audit-evidence/site-browser.txt
       - name: Preserve exact-commit evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
