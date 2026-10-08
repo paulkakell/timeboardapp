@@ -36,9 +36,12 @@
 <h2 id="chatgpt">ChatGPT</h2>
 
 <p>
-  TimeboardApp 00.14.00 includes an <strong>experimental native MCP connection</strong> for ChatGPT.
+  TimeboardApp 00.14.01 includes an <strong>experimental native MCP connection</strong> for ChatGPT.
   Each person signs in with their own TimeboardApp account and approves the requested permissions.
   MCP is disabled by default; an administrator must enable it on a publicly reachable HTTPS installation.
+  Version 00.14.01 adds authorization-response issuer identification for the stable ChatGPT callback.
+  If connection setup is rejected, ask the administrator to check public TLS, OAuth discovery,
+  and the exact callback allowlist. Do not substitute a password or signing key for OAuth client credentials.
 </p>
 {% if mcp_enabled %}
 <p class="alert alert-info" role="status">
@@ -55,7 +58,7 @@
 <h3>Connect your account</h3>
 <ol>
   <li>Ask your administrator for this installation's public MCP address, such as <code>https://tasks.example.com/mcp</code>.</li>
-  <li>In ChatGPT, open <strong>Plugins → + → Add custom MCP server</strong>. Enter that address, choose <strong>OAuth</strong>, and create the plugin. Availability depends on your ChatGPT account and workspace settings.</li>
+  <li>In ChatGPT, open <strong>Plugins → + → Add custom MCP server</strong>. Enter that address, choose <strong>OAuth</strong> and dynamic client registration when offered, and create the plugin. Leave manual client credentials empty for dynamic registration. Availability depends on your ChatGPT account and workspace settings.</li>
   <li>Sign in on the TimeboardApp page. Check the account name and requested permissions, then select <strong>Allow access</strong>, or <strong>Cancel</strong> to decline.</li>
   <li>Start a new ChatGPT conversation and select the plugin with <code>@</code>. Ask it to identify your account and list your tasks before creating a disposable test task.</li>
 </ol>

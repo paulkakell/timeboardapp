@@ -14,7 +14,7 @@ Do not file security vulnerabilities in public issues. Follow [SECURITY.md](SECU
 
 For a small correction, a focused pull request with a reproducing test is sufficient. For API changes, dependency major upgrades, new integrations, or feature removal, first describe the use case, alternatives, compatibility impact, and acceptance criteria in a feature request. A fix-or-deprecate proposal should explain who relies on the feature and how existing data or clients would migrate. Do not silently remove supported behavior.
 
-Version 00.14.00 supports private GPT Actions and experimental native MCP with per-user OAuth behind an opt-in flag; see [MCP_TESTING.md](MCP_TESTING.md). MCP is disabled by default. Keep automated protocol/browser checks separate from live ChatGPT acceptance, which has not been completed for this release. Model-serving APIs are a different capability.
+Version 00.14.01 supports private GPT Actions and experimental native MCP with per-user OAuth behind an opt-in flag; see [MCP_TESTING.md](MCP_TESTING.md). MCP is disabled by default. Keep RFC 9207 issuer discovery and all successful/error callback responses aligned; tests must preserve exact redirect checks, PKCE, and resource binding. Keep automated protocol/browser checks separate from live ChatGPT acceptance, which has not been completed for this release. Model-serving APIs are a different capability.
 
 ## Create a branch
 

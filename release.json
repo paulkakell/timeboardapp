@@ -1,9 +1,9 @@
 {
   "date": "2026-10-08",
-  "previous_version": "00.13.02",
-  "change_type": "additive",
+  "previous_version": "00.14.00",
+  "change_type": "fix",
   "breaking_changes": false,
-  "pull_request": 37,
+  "pull_request": 38,
   "python_versions": [
     "3.12",
     "3.13"

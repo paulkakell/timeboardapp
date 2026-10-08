@@ -1,5 +1,13 @@
 # Changelog
 
+## 00.14.01 - 2026-10-08
+
+- Fix: Add RFC 9207 authorization-response issuer identification for native MCP OAuth (PR #38). Discovery advertises support only with matching `iss` values on approval, cancellation, and authorization-error callbacks.
+- Fix: Preserve exact issuer serialization, callback validation, PKCE, resource binding, consent CSRF, and invalid-client/redirect rejection. No dependency or database-schema change relative to 00.14.00.
+- Tests: Cover issuer handling with 43 focused cases; verify discovery and the real callback in browser/container smoke checks. Retain publication-boundary tests and retire the completed one-time preview job.
+- Documentation: Update README, MCP setup/troubleshooting, in-app help, release/versioning guidance, and the public website. Synchronize source version, install references, Docker/npm metadata, and generated badges/reference data.
+- Operations: Preserve the published preview and old release tags. Rebuild and recreate from 00.14.01 to deploy; merging source and publishing the website do not update existing applications. Live ChatGPT acceptance remains deployment-specific and unverified here.
+
 ## 00.14.00 - 2026-10-08
 
 - Additive: Opt-in Streamable HTTP MCP at `/mcp`, eleven account/task/assignment tools, per-tool scopes, persistent OAuth authorization-code grants with S256 PKCE, explicit consent, rotating refresh tokens, and connection revocation.

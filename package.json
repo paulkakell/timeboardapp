@@ -1,6 +1,6 @@
 {
   "name": "timeboardapp-vendor-assets",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "private": true,
   "description": "Build-only pinned browser assets; no Node runtime in the image",
   "dependencies": {

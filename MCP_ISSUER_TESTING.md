@@ -1,90 +1,75 @@
-# OAuth issuer-identification testing branch
+# OAuth issuer-identification verification
 
-Branch: `fix/mcp-oauth-issuer-identification`.
-Base: `4d4f9e01351cfd48c31e3cae3da01476b3ae5aa1` (source release `00.14.00`).
-Testing prerelease: `mcp-issuer-test.1`, published only after the branch's full
-Python 3.12/3.13 and container CI gates pass. The `v00.14.00` tag does not include
-this fix and is not moved. The application still reports base version `00.14.00`;
-use the preview tag, commit and `PREVIEW_MANIFEST.json` to identify this source.
-This is not the next stable release, a registry image or a server deployment.
+Source release: `00.14.01`, PR #38. The fix originated on
+`fix/mcp-oauth-issuer-identification` and in the historical `mcp-issuer-test.1`
+preview. The old `v00.14.00` release does not include it.
 
-## Changes and compatibility
+## Protocol behavior
 
 The server implements RFC 9207 authorization-response issuer identification.
-OAuth metadata advertises `authorization_response_iss_parameter_supported: true`.
-Approval, cancellation, and SDK-generated authorization error callbacks include
-one `iss` query parameter matching the metadata `issuer` exactly, including the
+Discovery advertises `authorization_response_iss_parameter_supported: true`.
+Approval, cancellation, and SDK/provider authorization-error callbacks carry one
+`iss` query parameter equal to the published metadata issuer, including the
 trailing slash on an origin such as `https://tasks.example.com/`.
 
-The `/authorize` adapter only modifies existing redirects carrying `code` or
-`error`, after the SDK has validated the client and callback. Internal consent
-navigation and direct JSON errors remain unchanged. Browser approval and denial
-use the same helper after their existing validation. Request headers and incoming
-query parameters cannot supply the issuer.
-
-OAuth, S256 PKCE, resource binding, exact redirect allowlists, token lifetimes,
-consent CSRF, dependency locks, and the database schema are unchanged. Never add a
-wildcard callback or advertise the metadata flag without implementing responses.
+The `/authorize` adapter modifies only existing validated callback redirects
+containing `code` or `error`. Internal consent navigation and direct errors for
+invalid clients/callbacks remain unchanged. Request headers and incoming query
+parameters cannot choose the issuer. Exact callbacks, S256 PKCE, resource binding,
+CSRF, token lifetimes, dependency locks, and the database schema are unchanged.
 
 OpenAI documents that eligible new connections use the stable callback
 `https://chatgpt.com/connector_platform_oauth_redirect` when issuer identification
-is implemented and advertised. That callback is in the default allowlist.
-Existing connections may retain a callback-specific URI. Preserve their exact
-callbacks, or create a new test connection. Custom
-`TIMEBOARDAPP_MCP_REDIRECT_URIS` overrides still apply and may exclude the stable
-callback; preserve required entries when updating an override.
+is implemented and advertised. It is already in the default allowlist. Existing
+connections may retain callback-specific URLs. Preserve those exact URLs and any
+`TIMEBOARDAPP_MCP_REDIRECT_URIS` override; a custom override can exclude the stable
+callback. Do not add wildcards or only set the metadata flag.
 
-This addresses a protocol compatibility gap. Successful diagnostic registration
-alone does not establish live ChatGPT compatibility or identify every cause of a
-generic plugin-creation error. A real connection test remains necessary.
+## Deploy and verify
 
-## Isolated deployment
-
-Use [MCP_TESTING.md](MCP_TESTING.md) with synthetic accounts, a separate persistent
-directory, HTTPS hostname, and container. Do not copy live OAuth state or use the
-production database. In the isolated checkout:
+Prefer the isolated deployment in [MCP_TESTING.md](MCP_TESTING.md), with synthetic
+accounts and a separate private data directory and HTTPS hostname. Never copy
+live OAuth state into a test environment. Build from `v00.14.01`, not the old tag:
 
 ```sh
-git fetch origin tag mcp-issuer-test.1
-git switch --detach mcp-issuer-test.1
+git fetch origin --tags
+git switch --detach v00.14.01
 MCP_TEST_BASE_URL=https://timeboard-test.example.com \
   docker compose -p timeboard-issuer-test -f docker-compose.mcp-test.yml up -d --build
 ```
 
-Set `MCP_TEST_DATA` to an unused private directory if the default already contains
-another test instance. Follow the existing guide's ownership, TLS, reverse-proxy,
-credential-reset, and backup precautions. Publishing this source does not update a running container. Rebuilding
-`v00.14.00` does not include this fix.
-
-For an existing custom Compose deployment, back up the complete database and
-settings consistently, retain the previous image, and preserve the existing data
-path and environment. Change only the image/build source entries:
+For an existing Compose deployment, take a consistent full database/settings
+backup, preserve its data directory, ownership, signing keys, and environment,
+and select the patch source before rebuilding and recreating. A custom remote
+build can use:
 
 ```yaml
-    image: timeboardapp:mcp-issuer-test.1
-    build:
-      context: "https://github.com/paulkakell/timeboardapp.git#mcp-issuer-test.1"
-      dockerfile: Dockerfile
+image: timeboardapp:00.14.01
+build:
+  context: "https://github.com/paulkakell/timeboardapp.git#v00.14.01"
+  dockerfile: Dockerfile
 ```
 
-Then run `docker compose up -d --build --force-recreate timeboardapp` on the Docker
-host in its existing Compose directory. An isolated test instance is preferred.
-Never replace the live data directory with an empty directory to test an upgrade.
-
-From Windows Command Prompt, substitute the actual test hostname:
+From Windows Command Prompt, use your actual HTTPS hostname:
 
 ```cmd
-curl.exe -q -sS "https://timeboard-test.example.com/.well-known/oauth-authorization-server"
-curl.exe -q -sS -i "https://timeboard-test.example.com/mcp"
+curl.exe -q -fsS --max-time 20 "https://timeboard-test.example.com/healthz"
+curl.exe -q -fsS --max-time 20 "https://timeboard-test.example.com/.well-known/oauth-authorization-server"
+curl.exe -q -sS -i --max-time 20 "https://timeboard-test.example.com/mcp"
 ```
 
-Discovery must advertise the issuer-support flag. Unauthenticated MCP must still
-return 401 with a resource-metadata challenge. Keep certificate verification on.
-Create a new OAuth/DCR connection in ChatGPT and test sign-in, approval,
-cancellation, one disposable task, and profile disconnection. Redact cookies,
-authorization codes, and tokens from reports.
+Health should identify `00.14.01`; discovery should advertise the issuer flag.
+Unauthenticated MCP must still return 401 with a resource-metadata challenge.
+Do not bypass certificate verification. Redact cookies and credentials.
 
-## Tests
+Create a new OAuth/DCR connection in ChatGPT, sign in, and test approval, one
+disposable task, refresh, and profile disconnection. Test cancellation on a
+separate attempt. Inspect actual registration errors rather than inferring their
+cause from a generic creation message. A successful local registration does not
+prove that ChatGPT sent the same callback. See the [troubleshooting
+procedure](MCP_TESTING.md#troubleshoot-a-chatgpt-connection).
+
+## Automated tests and acceptance boundary
 
 ```sh
 python -m pytest -q tests/test_mcp_issuer_unit.py tests/test_mcp_issuer.py
@@ -94,34 +79,31 @@ python scripts/release_metadata.py --check
 python scripts/mcp_browser_smoke.py
 ```
 
-The helper suite covers issuer normalization, duplicate removal, query encoding,
-redirect status/header preservation, internal navigation, and direct errors.
-The real-provider suite covers metadata consistency, approval and code exchange
-for all three client authentication methods, denial without credentials,
-SDK/provider errors, absent state, invalid clients/callbacks, issuer spoofing,
-unchanged registration allowlists, and CSRF rejection.
+The 43 issuer-specific cases cover normalization, query preservation, metadata,
+approval/code exchange for all supported client authentication methods, denial,
+SDK/provider errors, missing state, invalid callbacks/clients, issuer spoofing,
+unchanged registration allowlists, and CSRF rejection. Browser smoke verifies
+the real callback issuer, and container smoke checks issuer discovery. These use
+isolated data; the intercepted browser callback sends nothing to ChatGPT.
 
-Record results against the exact commit. Helper tests are not full application,
-container, public TLS, or live ChatGPT acceptance tests.
+Consult the exact commit's CI run and artifacts. Automated protocol, browser,
+container, and audit checks do not establish live ChatGPT acceptance or prove
+the original generic creation error had only one cause.
 
-## Rollback and scope
+## Historical preview and rollback
 
-Stop the isolated test project without deleting its data and rebuild the prior
-verified source when required. This preview has no database migration, main-branch
-merge, stable release publication, or production rollout. Source rollback does not undo
-live task changes.
+The published `mcp-issuer-test.1` tag remains at
+`c5f7f4f464dbbfd77ad1ba659e64aa4be22e970d`, with source archives, a manifest, and
+checksums. That preview reports base version `00.14.00`. Its one-time publishing
+job is retired from current CI; the historical publisher and safety tests are
+retained for provenance. Existing tags/assets are not moved or replaced.
 
-## Preview publication controls
-
-The existing CI remains read-only during tests. Only the branch-specific preview
-job receives `contents: write`, after the Python matrix and container jobs pass.
-The publisher checks the exact workflow commit, branch, event and completed jobs,
-packages tracked source, and marks the release as a prerelease, never Latest.
-The fixed preview tag cannot be moved or overwritten by later commits. A new
-preview requires a new reviewed tag. Main's existing stable-release gate and
-version metadata remain unchanged. PR and fork runs cannot publish previews.
+Retain the previous image and consistent backup. A source rollback removes
+issuer support, not task changes; reconcile newer writes before restoring data.
+The patch has no additional migration relative to 00.14.00. Website publication
+and source release publication do not deploy the user's application.
 
 ## References
 
 - [RFC 9207](https://www.rfc-editor.org/rfc/rfc9207.html)
-- [OpenAI plugin authentication](https://developers.openai.com/plugins/build/auth)
+- [OpenAI authentication](https://developers.openai.com/plugins/build/auth)

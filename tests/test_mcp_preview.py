@@ -85,15 +85,14 @@ def test_preview_tag_is_never_moved(publisher):
         publisher.require_tag({"object": {"type": "tag", "sha": "a" * 40}}, "a" * 40)
 
 
-def test_preview_workflow_is_separate_from_main_release(publisher):
+def test_preview_publication_job_is_retired_before_main_merge(publisher):
     workflow = yaml.safe_load((ROOT / ".github/workflows/audit.yml").read_text())
+    triggers = workflow.get("on", workflow.get(True))
+    assert triggers["push"]["branches"] == ["main"]
+    assert "mcp-preview" not in workflow["jobs"]
     assert workflow["permissions"] == {"contents": "read"}
-    job = workflow["jobs"]["mcp-preview"]
-    assert set(job["needs"]) == {"regression", "container"}
-    assert f"github.ref == 'refs/heads/{publisher.BRANCH}'" in job["if"]
-    assert "github.event_name == 'push'" in job["if"]
-    assert "github.repository == 'paulkakell/timeboardapp'" in job["if"]
-    assert job["permissions"] == {"contents": "write", "actions": "read"}
-    assert job["steps"][0]["with"]["persist-credentials"] is False
-    assert "github.ref == 'refs/heads/main'" in workflow["jobs"]["release"]["if"]
+    job = workflow["jobs"]["release"]
+    assert "github.ref == 'refs/heads/main'" in job["if"]
+    assert "needs.release-intent.outputs.publish == 'true'" in job["if"]
+    assert set(job["needs"]) == {"regression", "container", "release-intent"}
     assert not publisher.TAG.startswith("v")

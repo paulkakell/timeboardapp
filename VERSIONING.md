@@ -2,9 +2,9 @@
 
 ## Version identity
 
-`app/version.py:APP_VERSION` is the authoritative application version. Display it as `xx.xx.xx` (release.feature.fix) and tag it as `vxx.xx.xx`. Feature release `00.14.00` adds experimental native MCP and per-user OAuth from PR #34, refreshes setup/help/website documentation, and carries forward the FastAPI and PyJWT updates from PRs #35 and #36. The previous published release is `00.13.02`. MCP stays disabled by default; existing private GPT Actions remain available. See `RELEASE_NOTES_00.14.00.md` and `MCP_TESTING.md` for enablement, migration, and acceptance limits.
+`app/version.py:APP_VERSION` is the authoritative application version. Display it as `xx.xx.xx` (release.feature.fix) and tag it as `vxx.xx.xx`. Patch release `00.14.01` incorporates PR #38: RFC 9207 OAuth issuer identification, regression coverage, and updated application help and website guides. The previous published release is `00.14.00`, which introduced experimental native MCP and per-user OAuth. MCP stays disabled by default; existing private GPT Actions remain available. See `RELEASE_NOTES_00.14.01.md` and `MCP_TESTING.md` for enablement, migration, and acceptance limits.
 
-While the release component is `00`, feature updates may include documented breaking changes; a patch must not introduce new compatibility breaks. Advancing the release component is an explicitly planned release-line change. This padded project format is not strict SemVer syntax. npm requires the unpadded equivalent: `00.14.00` maps to `0.14.0`. Both npm manifest roots must agree; vendored dependency versions remain unchanged by an application version bump.
+While the release component is `00`, feature updates may include documented breaking changes; a patch must not introduce new compatibility breaks. Advancing the release component is an explicitly planned release-line change. This padded project format is not strict SemVer syntax. npm requires the unpadded equivalent: `00.14.01` maps to `0.14.1`. Both npm manifest roots must agree; vendored dependency versions remain unchanged by an application version bump.
 
 ## Prepare a release
 
@@ -30,7 +30,21 @@ The publisher uses only the scoped Actions token, reads tracked files through `g
 
 The local source-version badge derives from `APP_VERSION` and links to the exact release tag. The live CI badge explicitly selects `branch=main&event=push`; it must not display another branch's result or a hardcoded passing image. Python badges describe tested runtimes, not every supported interpreter. Separate **private GPT Actions** and **native MCP (opt-in)** badges describe available interfaces; they do not claim live ChatGPT acceptance or integration certification. The MIT badge links to the tracked license. No static vulnerability-free or coverage claim is used.
 
+## Historical MCP preview
+
+The fixed `mcp-issuer-test.1` tag and assets remain at their original tested
+commit. Its one-time branch publication job was retired for the main merge so
+later commits cannot try to republish that fixed tag. The historical publisher
+and its safety tests remain in source. Current numbered patches use the normal
+checked main-branch release process, not the preview publisher.
+
 ## Rollback
+
+For 00.14.01, retain the 00.14.00 image and consistent database/settings backup.
+There is no additional schema migration or signing-key change. A rollback removes
+issuer identification and can prevent new stable-callback ChatGPT connections;
+it does not undo task edits. Preserve exact callback overrides already in use.
+
 
 For 00.14.00, retain `v00.13.02`, the old running image, and a consistent full database/settings backup before upgrading. MCP creates five additive tables only when enabled; the older source ignores those tables. Setting `TIMEBOARDAPP_MCP_ENABLED=false` and recreating the container disables the MCP/OAuth routes without undoing task mutations. Revoke connections before disabling if later re-enablement must require consent again. JSON task exports omit OAuth state and retry history, so they are not substitutes for the full backup. See `MCP_TESTING.md` for account, credential, and schema details.
 
