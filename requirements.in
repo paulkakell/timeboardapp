@@ -13,4 +13,4 @@ itsdangerous>=2.2.0,<3
 # Used by the administrator's optional dependency-audit workflow.
 pip-audit>=2.10.1,<3
 # Native MCP transport and OAuth protocol handlers (v2 API).
-mcp>=2.2.0,<3
+mcp>=2.3.0,<3
