@@ -5,7 +5,7 @@
   "description": "Build-only pinned browser assets; no Node runtime in the image",
   "dependencies": {
     "bootstrap": "5.3.8",
-    "fullcalendar": "6.1.21",
+    "fullcalendar": "7.1.1",
     "@popperjs/core": "2.11.8"
   }
 }
