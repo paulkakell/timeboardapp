@@ -10,6 +10,11 @@ updates:
     schedule:
       interval: weekly
     open-pull-requests-limit: 5
+    ignore:
+      # FullCalendar 7 requires a separately validated API and asset migration.
+      # Keep version-6 minor and patch updates eligible for review.
+      - dependency-name: fullcalendar
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: docker
     directory: /
     schedule:
