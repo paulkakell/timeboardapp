@@ -1,4 +1,4 @@
-FROM python:3.13-slim@sha256:7c61056e61ac89e852de05f3dc6fa51a6dd2181797bceed46aa725dd7cb2cd3b
+FROM python:3.15-slim@sha256:94d3426f1def7db4a106a232ac121bfd975393e5dfd40a619b955fae45fe7913
 
 LABEL org.opencontainers.image.version="00.14.01" \
       org.opencontainers.image.source="https://github.com/paulkakell/timeboardapp" \
